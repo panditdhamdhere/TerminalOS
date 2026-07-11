@@ -2,6 +2,21 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.2.0] - 2026-07-11
+
+### Added
+
+- Real PTY shell execution per terminal tab (portable-pty)
+- Streaming shell output with background reader threads
+- vt100 ANSI terminal emulator with color rendering
+- Per-tab independent shell sessions
+- Keyboard forwarding to shell (arrows, Ctrl+C, etc.)
+- Scrollback via Page Up/Down, Ctrl+Shift+Up/Down, and mouse wheel
+- Copy terminal contents to clipboard (Ctrl+Shift+C)
+- Paste from clipboard into shell (Ctrl+Shift+V)
+- In-terminal text search with highlight (Ctrl+Shift+F)
+- Command history ring buffer per tab
+
 ## [0.1.0] - 2026-07-11
 
 ### Added

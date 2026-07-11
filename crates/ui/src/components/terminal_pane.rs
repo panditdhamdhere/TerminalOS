@@ -1,24 +1,24 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget};
 use terminalos_shared::Theme;
-use terminalos_terminal::ShellSession;
+use terminalos_terminal::ShellManager;
 
 use crate::event::FocusedPane;
 use crate::theme::UiPalette;
 
-/// Renders the main terminal pane with output and input line.
+/// Renders the PTY-backed terminal pane with ANSI colors.
 pub fn render_terminal_pane(
     area: Rect,
     buf: &mut Buffer,
-    session: &ShellSession,
+    shell: &ShellManager,
     theme: &Theme,
     focused: FocusedPane,
 ) {
     let palette = UiPalette::from(theme);
-    let tab = session.active_tab();
+    let tab = shell.session().active_tab();
 
     let border_style = if focused == FocusedPane::Terminal {
         Style::default()
@@ -28,8 +28,14 @@ pub fn render_terminal_pane(
         Style::default().fg(palette.border)
     };
 
+    let title = if shell.is_search_mode() {
+        format!("  {} — search: {}_  ", tab.title, shell.search_input())
+    } else {
+        format!("  {}  ", tab.title)
+    };
+
     let block = Block::default()
-        .title(format!("  {}  ", tab.title))
+        .title(title)
         .borders(Borders::ALL)
         .border_style(border_style)
         .style(
@@ -41,49 +47,50 @@ pub fn render_terminal_pane(
     let inner = block.inner(area);
     block.render(area, buf);
 
-    if inner.height < 2 {
+    if inner.height == 0 {
         return;
     }
 
-    let output_height = inner.height.saturating_sub(1) as usize;
-    let lines: Vec<Line> = tab
-        .buffer
-        .lines()
-        .iter()
-        .rev()
-        .take(output_height)
-        .collect::<Vec<_>>()
+    let width = inner.width as usize;
+    let height = inner.height as usize;
+
+    let lines: Vec<Line> = shell
+        .active_emulator()
+        .map(|emu| emu.render_rows(height, width))
+        .unwrap_or_default()
         .into_iter()
-        .rev()
-        .map(|l| Line::from(Span::raw(l.as_str())))
+        .map(|spans| {
+            Line::from(
+                spans
+                    .iter()
+                    .map(|s| {
+                        let mut style = Style::default();
+                        if let Some((r, g, b)) = s.fg {
+                            style = style.fg(Color::Rgb(r, g, b));
+                        } else if let Some(idx) = s.fg_index {
+                            style = style.fg(Color::Indexed(idx));
+                        }
+                        if let Some((r, g, b)) = s.bg {
+                            style = style.bg(Color::Rgb(r, g, b));
+                        } else if let Some(idx) = s.bg_index {
+                            style = style.bg(Color::Indexed(idx));
+                        }
+                        if s.bold {
+                            style = style.add_modifier(Modifier::BOLD);
+                        }
+                        if s.italic {
+                            style = style.add_modifier(Modifier::ITALIC);
+                        }
+                        if s.underline {
+                            style = style.add_modifier(Modifier::UNDERLINED);
+                        }
+                        Span::styled(s.text.clone(), style)
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        })
         .collect();
 
-    let output_area = Rect {
-        height: inner.height.saturating_sub(1),
-        ..inner
-    };
-    let output = Paragraph::new(lines).style(Style::default().fg(palette.foreground));
-    Widget::render(output, output_area, buf);
-
-    let prompt = format!("{} $ {}", tab.cwd, tab.input);
-    let input_area = Rect {
-        y: inner.y + inner.height.saturating_sub(1),
-        height: 1,
-        ..inner
-    };
-    let input = Paragraph::new(Line::from(vec![
-        Span::styled(
-            prompt,
-            Style::default()
-                .fg(palette.accent)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            "▌",
-            Style::default()
-                .fg(palette.foreground)
-                .add_modifier(Modifier::SLOW_BLINK),
-        ),
-    ]));
-    Widget::render(input, input_area, buf);
+    let paragraph = Paragraph::new(lines).style(Style::default().bg(palette.background));
+    Widget::render(paragraph, inner, buf);
 }

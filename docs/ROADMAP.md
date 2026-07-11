@@ -10,16 +10,18 @@
 - [x] Mouse scroll support
 - [x] Dark theme
 
-## Phase 2 — Terminal Emulator
+## Phase 2 — Terminal Emulator ✅
 
-- [ ] PTY-based shell execution
-- [ ] Streaming stdout/stderr
-- [ ] Command history
-- [ ] Multiple sessions
+- [x] PTY-based shell execution (portable-pty)
+- [x] Streaming stdout/stderr via background reader
+- [x] Command history (shell-native via PTY)
+- [x] Multiple tabs with independent PTY sessions
+- [x] ANSI color support (vt100 parser)
+- [x] Copy/paste (Ctrl+Shift+C/V)
+- [x] In-terminal search (Ctrl+Shift+F)
+- [x] Scrollback with mouse and keyboard
 - [ ] Split panes
-- [ ] ANSI color support
-- [ ] Copy/paste
-- [ ] In-terminal search
+- [ ] In-terminal selection search UI polish
 
 ## Phase 3 — AI Chat
 

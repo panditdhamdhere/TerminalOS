@@ -56,7 +56,7 @@ pub fn render_status_bar(
             format!("Focus: {focus_label}"),
             Style::default().fg(palette.warning),
         ),
-        Span::raw(" │ Ctrl+Q quit │ Ctrl+T tab │ Ctrl+B sidebar │ Ctrl+/ chat"),
+        Span::raw(" │ Ctrl+Shift+C copy │ Ctrl+Shift+V paste │ Ctrl+Shift+F search"),
     ]);
 
     let paragraph = Paragraph::new(line);

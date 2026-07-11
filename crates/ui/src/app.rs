@@ -13,7 +13,7 @@ use terminalos_config::AppConfig;
 use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
 use terminalos_shared::{LogEntry, LogLevel, Theme, ThemeMode};
-use terminalos_terminal::ShellSession;
+use terminalos_terminal::{ShellManager, key_event_to_bytes};
 use terminalos_workspace::WorkspaceManager;
 use tokio::runtime::Runtime;
 use tracing::info;
@@ -37,7 +37,7 @@ pub struct TerminalAppOptions {
 pub struct TerminalApp {
     config: AppConfig,
     theme: Theme,
-    session: ShellSession,
+    shell: ShellManager,
     workspace_manager: WorkspaceManager,
     file_tree: Option<FileNode>,
     workspace_name: String,
@@ -53,13 +53,12 @@ pub struct TerminalApp {
     show_chat: bool,
     show_logs: bool,
     should_quit: bool,
-    tick: u8,
     last_frame: Instant,
+    terminal_area: Option<ratatui::layout::Rect>,
 }
 
 impl TerminalApp {
-    #[must_use]
-    pub fn new(options: TerminalAppOptions) -> Self {
+    pub fn new(options: TerminalAppOptions) -> terminalos_shared::Result<Self> {
         let cwd = options
             .workspace_path
             .clone()
@@ -89,12 +88,12 @@ impl TerminalApp {
             }
         }
 
-        let mut session = ShellSession::new(&cwd);
-        session.active_tab_mut().buffer.push_str(WELCOME_MESSAGE);
+        let shell = ShellManager::new(&cwd, 24, 80)?;
 
         let mut logs = vec![
             LogEntry::info("TerminalOS started"),
             LogEntry::info(format!("Workspace: {workspace_name}")),
+            LogEntry::info("PTY shell sessions active"),
         ];
 
         if branch.is_some() {
@@ -104,13 +103,13 @@ impl TerminalApp {
             )));
         }
 
-        Self {
+        Ok(Self {
             show_sidebar: options.config.ui.show_sidebar,
             show_chat: options.config.ui.show_chat,
             show_logs: options.config.ui.show_logs,
             config: options.config,
             theme,
-            session,
+            shell,
             workspace_manager,
             file_tree,
             workspace_name,
@@ -123,9 +122,9 @@ impl TerminalApp {
             chat_scroll: 0,
             logs_scroll: 0,
             should_quit: false,
-            tick: 0,
             last_frame: Instant::now(),
-        }
+            terminal_area: None,
+        })
     }
 
     /// Runs the terminal UI event loop until quit.
@@ -152,18 +151,27 @@ impl TerminalApp {
         info!("TerminalOS UI started");
 
         while !self.should_quit {
+            self.shell.poll_output();
+
             terminal
                 .draw(|frame| self.render(frame))
                 .map_err(|e| terminalos_shared::Error::Ui(format!("draw: {e}")))?;
 
-            if event::poll(Duration::from_millis(50))
+            if let Some(area) = self.terminal_area {
+                let rows = area.height.saturating_sub(2).max(4);
+                let cols = area.width.saturating_sub(2).max(20);
+                self.shell.resize(rows, cols);
+            }
+
+            if event::poll(Duration::from_millis(16))
                 .map_err(|e| terminalos_shared::Error::Ui(format!("poll: {e}")))?
             {
                 match event::read()
                     .map_err(|e| terminalos_shared::Error::Ui(format!("read event: {e}")))?
                 {
                     Event::Key(key) => {
-                        let action = map_key_event(key, self.focus);
+                        let search = self.shell.is_search_mode();
+                        let action = map_key_event(key, self.focus, search);
                         self.handle_action(action);
                     }
                     Event::Mouse(mouse) => self.handle_mouse(mouse),
@@ -174,7 +182,6 @@ impl TerminalApp {
 
             if self.config.ui.animations && self.last_frame.elapsed() >= Duration::from_millis(500)
             {
-                self.tick = self.tick.wrapping_add(1);
                 self.last_frame = Instant::now();
             }
 
@@ -197,7 +204,7 @@ impl TerminalApp {
         Ok(())
     }
 
-    fn render(&self, frame: &mut ratatui::Frame<'_>) {
+    fn render(&mut self, frame: &mut ratatui::Frame<'_>) {
         let area = frame.area();
         let visibility = LayoutVisibility {
             show_sidebar: self.show_sidebar,
@@ -206,6 +213,8 @@ impl TerminalApp {
         };
         let layout = compute_layout(area, &self.config.layout, &visibility);
         let buf = frame.buffer_mut();
+
+        self.terminal_area = Some(layout.terminal);
 
         if let Some(sidebar_area) = layout.sidebar {
             render_sidebar(
@@ -218,8 +227,8 @@ impl TerminalApp {
             );
         }
 
-        render_tab_bar(layout.tab_bar, buf, &self.session, &self.theme);
-        render_terminal_pane(layout.terminal, buf, &self.session, &self.theme, self.focus);
+        render_tab_bar(layout.tab_bar, buf, self.shell.session(), &self.theme);
+        render_terminal_pane(layout.terminal, buf, &self.shell, &self.theme, self.focus);
 
         if let Some(chat_area) = layout.chat {
             render_chat_pane(
@@ -247,7 +256,7 @@ impl TerminalApp {
         render_status_bar(
             layout.status_bar,
             buf,
-            &self.session,
+            self.shell.session(),
             self.workspace_manager
                 .active()
                 .map(|w| w.name.as_str())
@@ -261,18 +270,27 @@ impl TerminalApp {
     fn handle_action(&mut self, action: AppAction) {
         match action {
             AppAction::Quit => self.should_quit = true,
-            AppAction::NewTab => {
-                self.session.new_tab();
-                self.push_log(LogLevel::Info, "New terminal tab created");
-            }
+            AppAction::NewTab => match self.shell.new_tab() {
+                Ok(()) => self.push_log(LogLevel::Info, "New terminal tab created"),
+                Err(e) => self.push_log(LogLevel::Error, format!("New tab failed: {e}")),
+            },
             AppAction::CloseTab => {
-                if self.session.close_tab() {
+                if self.shell.close_active_tab() {
                     self.push_log(LogLevel::Info, "Terminal tab closed");
                 }
             }
-            AppAction::NextTab => self.session.next_tab(),
-            AppAction::PrevTab => self.session.prev_tab(),
-            AppAction::SelectTab(index) => self.session.select_tab(index),
+            AppAction::NextTab => {
+                self.shell.session_mut().next_tab();
+                self.shell.on_tab_switched();
+            }
+            AppAction::PrevTab => {
+                self.shell.session_mut().prev_tab();
+                self.shell.on_tab_switched();
+            }
+            AppAction::SelectTab(index) => {
+                self.shell.session_mut().select_tab(index);
+                self.shell.on_tab_switched();
+            }
             AppAction::ToggleSidebar => {
                 self.show_sidebar = !self.show_sidebar;
                 self.push_log(
@@ -306,13 +324,29 @@ impl TerminalApp {
             AppAction::ResizeSidebar(delta) => self.resize_sidebar(delta),
             AppAction::ResizeChat(delta) => self.resize_chat(delta),
             AppAction::ResizeLogs(delta) => self.resize_logs(delta),
-            AppAction::TerminalInput(c) => {
-                self.session.active_tab_mut().input.push(c);
+            AppAction::TerminalKey(key) => {
+                if let Some(bytes) = key_event_to_bytes(key) {
+                    if let Err(e) = self.shell.write_bytes(&bytes) {
+                        self.push_log(LogLevel::Error, format!("PTY write failed: {e}"));
+                    }
+                }
             }
-            AppAction::TerminalBackspace => {
-                self.session.active_tab_mut().input.pop();
+            AppAction::TerminalScrollUp => self.shell.scroll_active_up(1),
+            AppAction::TerminalScrollDown => self.shell.scroll_active_down(1),
+            AppAction::TerminalCopy => match self.shell.copy_active_to_clipboard() {
+                Ok(()) => self.push_log(LogLevel::Info, "Terminal copied to clipboard"),
+                Err(e) => self.push_log(LogLevel::Error, format!("Copy failed: {e}")),
+            },
+            AppAction::TerminalPaste => match self.shell.paste_to_active() {
+                Ok(()) => self.push_log(LogLevel::Info, "Pasted from clipboard"),
+                Err(e) => self.push_log(LogLevel::Error, format!("Paste failed: {e}")),
+            },
+            AppAction::TerminalToggleSearch => {
+                self.shell.toggle_search();
             }
-            AppAction::TerminalSubmit => self.submit_terminal_command(),
+            AppAction::SearchInput(c) => self.shell.search_input_push(c),
+            AppAction::SearchBackspace => self.shell.search_input_pop(),
+            AppAction::SearchSubmit => self.shell.search_submit(),
             AppAction::ChatInput(c) => self.chat_input.push(c),
             AppAction::ChatBackspace => {
                 self.chat_input.pop();
@@ -330,6 +364,12 @@ impl TerminalApp {
         }
 
         match event.kind {
+            MouseEventKind::ScrollUp if self.focus == FocusedPane::Terminal => {
+                self.shell.scroll_active_up(3);
+            }
+            MouseEventKind::ScrollDown if self.focus == FocusedPane::Terminal => {
+                self.shell.scroll_active_down(3);
+            }
             MouseEventKind::ScrollUp => self.scroll_up(),
             MouseEventKind::ScrollDown => self.scroll_down(),
             _ => {}
@@ -379,7 +419,7 @@ impl TerminalApp {
 
     fn scroll_up(&mut self) {
         match self.focus {
-            FocusedPane::Terminal => self.session.active_tab_mut().buffer.scroll_up(1),
+            FocusedPane::Terminal => self.shell.scroll_active_up(1),
             FocusedPane::Chat => self.chat_scroll = self.chat_scroll.saturating_sub(1),
             FocusedPane::Sidebar => self.sidebar_scroll = self.sidebar_scroll.saturating_sub(1),
             FocusedPane::Logs => self.logs_scroll = self.logs_scroll.saturating_sub(1),
@@ -388,37 +428,11 @@ impl TerminalApp {
 
     fn scroll_down(&mut self) {
         match self.focus {
-            FocusedPane::Terminal => self.session.active_tab_mut().buffer.scroll_down(1),
+            FocusedPane::Terminal => self.shell.scroll_active_down(1),
             FocusedPane::Chat => self.chat_scroll = self.chat_scroll.saturating_add(1),
             FocusedPane::Sidebar => self.sidebar_scroll = self.sidebar_scroll.saturating_add(1),
             FocusedPane::Logs => self.logs_scroll = self.logs_scroll.saturating_add(1),
         }
-    }
-
-    fn submit_terminal_command(&mut self) {
-        let tab = self.session.active_tab_mut();
-        let command = std::mem::take(&mut tab.input);
-        if command.is_empty() {
-            return;
-        }
-
-        tab.buffer.push_line(format!("{} $ {command}", tab.cwd));
-
-        if command == "clear" {
-            tab.buffer = terminalos_terminal::TerminalBuffer::new(10_000);
-            self.push_log(LogLevel::Info, "Terminal cleared");
-            return;
-        }
-
-        if command == "help" {
-            tab.buffer.push_str(HELP_MESSAGE);
-            return;
-        }
-
-        tab.buffer.push_line(format!(
-            "Shell execution available in Phase 2. Received: {command}"
-        ));
-        self.push_log(LogLevel::Info, format!("Command entered: {command}"));
     }
 
     fn submit_chat_message(&mut self) {
@@ -447,38 +461,3 @@ impl TerminalApp {
         }
     }
 }
-
-const WELCOME_MESSAGE: &str = r"
-  ╔══════════════════════════════════════════════════════════╗
-  ║                                                          ║
-  ║   ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ║
-  ║   ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗║
-  ║      ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║║
-  ║      ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║║
-  ║      ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║║
-  ║      ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝║
-  ║                        OS v0.1.0                         ║
-  ║          The AI-native terminal for developers.          ║
-  ║                                                          ║
-  ╚══════════════════════════════════════════════════════════╝
-
-  Type 'help' for keyboard shortcuts.
-";
-
-const HELP_MESSAGE: &str = r"
-  Keyboard Shortcuts:
-  ─────────────────────────────────────────
-  Ctrl+T        New tab
-  Ctrl+W        Close tab
-  Ctrl+Tab      Next tab
-  Ctrl+Shift+Tab Previous tab
-  Ctrl+B        Toggle sidebar
-  Ctrl+/        Toggle AI chat
-  Ctrl+`        Toggle logs
-  Ctrl+1/2/3/4  Focus terminal/chat/sidebar/logs
-  Tab           Cycle focus
-  Ctrl+←/→      Resize sidebar
-  Ctrl+↑/↓      Resize chat panel
-  Ctrl+Shift+↑/↓ Resize logs panel
-  Ctrl+Q        Quit
-";

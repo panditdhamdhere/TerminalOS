@@ -1,14 +1,10 @@
 use terminalos_shared::TabId;
 
-use crate::buffer::TerminalBuffer;
-
-/// A single terminal tab with title and output buffer.
+/// A single terminal tab backed by a PTY session.
 #[derive(Debug, Clone)]
 pub struct TerminalTab {
     pub id: TabId,
     pub title: String,
-    pub buffer: TerminalBuffer,
-    pub input: String,
     pub cwd: String,
 }
 
@@ -18,14 +14,12 @@ impl TerminalTab {
         Self {
             id: TabId::new(),
             title: title.into(),
-            buffer: TerminalBuffer::new(10_000),
-            input: String::new(),
             cwd: cwd.into(),
         }
     }
 }
 
-/// Shell session containing multiple terminal tabs.
+/// Tab collection with active tab tracking.
 #[derive(Debug, Clone)]
 pub struct ShellSession {
     pub tabs: Vec<TerminalTab>,
@@ -45,11 +39,6 @@ impl ShellSession {
     #[must_use]
     pub fn active_tab(&self) -> &TerminalTab {
         &self.tabs[self.active_tab]
-    }
-
-    #[must_use]
-    pub fn active_tab_mut(&mut self) -> &mut TerminalTab {
-        &mut self.tabs[self.active_tab]
     }
 
     pub fn new_tab(&mut self) {

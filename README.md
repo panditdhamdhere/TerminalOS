@@ -6,17 +6,14 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1 — Complete)
+## Features (Phase 1 + Phase 2)
 
-- **Multi-pane layout** — sidebar, terminal, AI chat, logs, status bar
-- **Tabs** — create, close, and switch terminal tabs
-- **Resizable panes** — keyboard-driven layout controls
-- **Workspace sidebar** — live file tree with git-aware filtering
-- **AI chat panel** — conversation UI ready for provider integration
-- **Application logs** — real-time event stream in the bottom pane
-- **Keyboard shortcuts** — full focus and navigation model
-- **Mouse support** — scroll in any pane
-- **Dark theme** — modern developer aesthetic
+- **Real shell** — PTY-backed bash/zsh with streaming output
+- **ANSI colors** — full vt100 terminal emulation in the UI
+- **Multi-tab PTY** — each tab runs an independent shell session
+- **Copy/paste** — Ctrl+Shift+C/V clipboard integration
+- **Search** — Ctrl+Shift+F to highlight matches in terminal output
+- **Scrollback** — 10,000 lines with mouse and keyboard scrolling
 
 ## Quick Start
 
@@ -73,7 +70,11 @@ cargo run -p terminalos-cli -- search "TerminalApp"
 | `Tab` | Cycle focus |
 | `Ctrl+←/→` | Resize sidebar |
 | `Ctrl+↑/↓` | Resize chat panel |
-| `Ctrl+Shift+↑/↓` | Resize logs panel |
+| `Ctrl+Shift+C` | Copy terminal |
+| `Ctrl+Shift+V` | Paste to terminal |
+| `Ctrl+Shift+F` | Search in terminal |
+| `Ctrl+Shift+↑/↓` | Scroll terminal |
+| `Page Up/Down` | Scroll terminal |
 | `Ctrl+Q` | Quit |
 
 ## Architecture

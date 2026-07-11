@@ -41,7 +41,7 @@ fn main() -> terminalos_shared::Result<()> {
     let mut app = TerminalApp::new(TerminalAppOptions {
         workspace_path: cli.workspace.or_else(|| std::env::current_dir().ok()),
         config,
-    });
+    })?;
 
     app.run()
 }

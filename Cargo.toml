@@ -21,7 +21,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 authors = ["Pandit Dhamdhere"]
@@ -54,6 +54,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tree-sitter = "0.24"
 uuid = { version = "1.11", features = ["v4", "serde"] }
 walkdir = "2.5"
+portable-pty = "0.8"
+vt100 = "0.15"
+arboard = "3.4"
 
 # Internal crates
 terminalos-ai = { path = "crates/ai" }
