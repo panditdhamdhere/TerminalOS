@@ -3517,6 +3517,7 @@ name = "terminalos"
 version = "0.10.0"
 dependencies = [
  "clap",
+ "dotenvy",
  "terminalos-config",
  "terminalos-core",
  "terminalos-shared",
@@ -3565,6 +3566,7 @@ name = "terminalos-cli"
 version = "0.10.0"
 dependencies = [
  "clap",
+ "dotenvy",
  "terminalos-config",
  "terminalos-git",
  "terminalos-indexer",

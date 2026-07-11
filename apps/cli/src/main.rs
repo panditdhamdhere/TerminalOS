@@ -120,6 +120,8 @@ enum PluginCommands {
 }
 
 fn main() -> terminalos_shared::Result<()> {
+    let _ = dotenvy::dotenv();
+
     let cli = Cli::parse();
     let config = ConfigLoader::default_paths().load().unwrap_or_default();
 

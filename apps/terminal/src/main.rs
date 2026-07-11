@@ -24,6 +24,8 @@ struct Cli {
 }
 
 fn main() -> terminalos_shared::Result<()> {
+    let _ = dotenvy::dotenv();
+
     let cli = Cli::parse();
 
     tracing_subscriber::fmt()

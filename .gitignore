@@ -19,4 +19,6 @@ docs/book/
 
 # Environment
 .env
-.env.*
+.env.local
+.env.*.local
+!.env.example

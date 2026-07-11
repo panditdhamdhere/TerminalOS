@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
+dotenvy.workspace = true
 terminalos-config.workspace = true
 terminalos-git.workspace = true
 terminalos-indexer.workspace = true
