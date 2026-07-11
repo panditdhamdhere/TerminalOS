@@ -87,3 +87,48 @@ pub fn repo_analysis_prompt(workspace: &str, git_summary: &str, file_count: usiz
         "Repository analysis for `{workspace}`.\n\nFiles indexed: {file_count}\nGit status:\n{git_summary}\n\nSummarize architecture, key crates, and suggested next steps. Use finish when done."
     )
 }
+
+#[must_use]
+pub fn commit_message_prompt(staged_diff: &str, status_summary: &str) -> String {
+    format!(
+        "Generate a concise, conventional commit message for these staged changes.\n\nRepository status:\n{status_summary}\n\nStaged diff:\n```diff\n{staged_diff}\n```\n\nRespond with:\n1. A single-line commit message (max 72 chars)\n2. A blank line\n3. A detailed body explaining the why\n\nEnd with a fenced block:\n```commit\n<your commit message here>\n```"
+    )
+}
+
+#[must_use]
+pub fn pr_summary_prompt(base_ref: &str, commits: &str, diff: &str) -> String {
+    format!(
+        "Generate a pull request summary comparing against `{base_ref}`.\n\nCommits:\n{commits}\n\nDiff:\n```diff\n{diff}\n```\n\nProvide: title, summary, changes list, test plan, and risks."
+    )
+}
+
+#[must_use]
+pub fn diff_explain_prompt(diff: &str, path: Option<&str>) -> String {
+    let scope = path
+        .map(|p| format!("for `{p}`"))
+        .unwrap_or_else(|| "for all changes".to_string());
+    format!(
+        "Explain the git diff {scope}.\n\n```diff\n{diff}\n```\n\nDescribe what changed, why it matters, and any concerns."
+    )
+}
+
+#[must_use]
+pub fn conflict_resolution_prompt(conflicts: &str) -> String {
+    format!(
+        "Help resolve these merge conflicts.\n\n{conflicts}\n\nFor each conflict, explain both sides and recommend a resolution with the merged content."
+    )
+}
+
+#[must_use]
+pub fn blame_explain_prompt(path: &str, blame: &str) -> String {
+    format!(
+        "Explain the git blame history for `{path}`.\n\n```\n{blame}\n```\n\nSummarize who changed what, when, and the evolution of this code."
+    )
+}
+
+#[must_use]
+pub fn health_recommendations_prompt(report: &str) -> String {
+    format!(
+        "Repository health report:\n\n{report}\n\nProvide actionable recommendations to improve repository hygiene."
+    )
+}

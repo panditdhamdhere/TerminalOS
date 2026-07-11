@@ -40,15 +40,15 @@
 - [x] Repository analysis
 - [x] Documentation generation
 
-## Phase 5 — Git Assistant
+## Phase 5 — Git Assistant ✅
 
-- [ ] Commit message generation
-- [ ] PR summaries
-- [ ] Diff explanation
-- [ ] Merge conflict resolution
-- [ ] Interactive staging
-- [ ] Git blame explanation
-- [ ] Repository health checks
+- [x] Commit message generation (`/commit`)
+- [x] PR summaries (`/pr`)
+- [x] Diff explanation (`/diff`)
+- [x] Merge conflict resolution (`/conflict`)
+- [x] Interactive staging (`/stage`, `/unstage`)
+- [x] Git blame explanation (`/blame`)
+- [x] Repository health checks (`/health`)
 
 ## Phase 6 — Workspace Manager
 

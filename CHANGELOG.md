@@ -2,6 +2,17 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.5.0] - 2026-07-11
+
+### Added
+
+- Git Assistant slash commands: `/commit`, `/pr`, `/diff`, `/conflict`, `/stage`, `/unstage`, `/blame`, `/health`
+- Extended `terminalos-git` crate with diff, blame, staging, conflict detection, and health assessment
+- AI-powered commit message generation from staged diffs
+- PR summary generation with commit log and branch diff
+- Interactive staging with confirmation gates for `git add` and `git reset`
+- Repository health checks (conflicts, remote sync, untracked files)
+
 ## [0.4.0] - 2026-07-11
 
 ### Added

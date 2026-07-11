@@ -130,6 +130,7 @@ impl TerminalApp {
             LogEntry::info(format!("Workspace: {workspace_name}")),
             LogEntry::info("PTY shell sessions active"),
             LogEntry::info("Coding agent ready — try /search, /edit, /fix"),
+            LogEntry::info("Git assistant ready — try /commit, /diff, /health"),
         ];
 
         if chat.has_providers() {

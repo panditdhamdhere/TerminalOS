@@ -7,6 +7,7 @@ use tokio::runtime::Runtime;
 
 use crate::action::PendingAction;
 use crate::command::SlashCommand;
+use crate::git_assistant::GitAssistant;
 use crate::prompts::{
     agent_system_prompt, create_prompt, docs_prompt, edit_prompt, explain_prompt, fix_prompt,
     refactor_prompt, repo_analysis_prompt, review_prompt, test_prompt,
@@ -43,6 +44,7 @@ pub struct AgentSession {
     config: AgentConfig,
     pending: Option<PendingAction>,
     workspace_name: String,
+    workspace_root: PathBuf,
 }
 
 impl AgentSession {
@@ -54,11 +56,16 @@ impl AgentSession {
             .unwrap_or_else(|| "workspace".to_string());
 
         Self {
-            executor: ToolExecutor::new(workspace_root, index_path),
+            executor: ToolExecutor::new(workspace_root.clone(), index_path),
             config,
             workspace_name,
             pending: None,
+            workspace_root,
         }
+    }
+
+    fn git(&self) -> Result<GitAssistant> {
+        GitAssistant::open(&self.workspace_root)
     }
 
     #[must_use]
@@ -98,6 +105,20 @@ impl AgentSession {
                 create_prompt(&path, &description),
             )),
             SlashCommand::Docs { path, focus } => self.handle_docs(&path, &focus),
+            SlashCommand::Commit => self.git()?.handle_commit(),
+            SlashCommand::Pr { base } => self.git()?.handle_pr(&base),
+            SlashCommand::Diff { path } => self.git()?.handle_diff(path.as_deref()),
+            SlashCommand::Conflict { path } => self.git()?.handle_conflict(path.as_deref()),
+            SlashCommand::Stage { paths } => {
+                if paths.is_empty() {
+                    self.git()?.handle_stage_list()
+                } else {
+                    self.git()?.handle_stage(&paths, false)
+                }
+            }
+            SlashCommand::Unstage { paths } => self.git()?.handle_stage(&paths, true),
+            SlashCommand::Blame { path, line } => self.git()?.handle_blame(&path, line),
+            SlashCommand::Health => self.git()?.handle_health(),
         }
     }
 

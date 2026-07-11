@@ -11,6 +11,14 @@ pub enum SlashCommand {
     Search { query: String },
     Docs { path: String, focus: String },
     Analyze,
+    Commit,
+    Pr { base: String },
+    Diff { path: Option<String> },
+    Conflict { path: Option<String> },
+    Stage { paths: Vec<String> },
+    Unstage { paths: Vec<String> },
+    Blame { path: String, line: Option<u32> },
+    Health,
 }
 
 /// Parses `/command args` from chat input. Returns `None` for non-slash input.
@@ -90,8 +98,57 @@ pub fn parse_slash_command(input: &str) -> Option<SlashCommand> {
             }
         }
         "analyze" => Some(SlashCommand::Analyze),
+        "commit" => Some(SlashCommand::Commit),
+        "pr" => Some(SlashCommand::Pr {
+            base: if rest.is_empty() {
+                "main".to_string()
+            } else {
+                rest.to_string()
+            },
+        }),
+        "diff" => Some(SlashCommand::Diff {
+            path: if rest.is_empty() {
+                None
+            } else {
+                Some(rest.to_string())
+            },
+        }),
+        "conflict" => Some(SlashCommand::Conflict {
+            path: if rest.is_empty() {
+                None
+            } else {
+                Some(rest.to_string())
+            },
+        }),
+        "stage" => Some(SlashCommand::Stage {
+            paths: split_paths(rest),
+        }),
+        "unstage" => Some(SlashCommand::Unstage {
+            paths: split_paths(rest),
+        }),
+        "blame" => parse_blame(rest),
+        "health" => Some(SlashCommand::Health),
         _ => None,
     }
+}
+
+fn split_paths(input: &str) -> Vec<String> {
+    if input.trim().is_empty() {
+        Vec::new()
+    } else {
+        input.split_whitespace().map(str::to_string).collect()
+    }
+}
+
+fn parse_blame(input: &str) -> Option<SlashCommand> {
+    let input = input.trim();
+    if input.is_empty() {
+        return None;
+    }
+    let mut parts = input.splitn(2, char::is_whitespace);
+    let path = parts.next()?.to_string();
+    let line = parts.next().and_then(|s| s.parse::<u32>().ok());
+    Some(SlashCommand::Blame { path, line })
 }
 
 fn split_path_and_rest(input: &str) -> Option<(String, String)> {

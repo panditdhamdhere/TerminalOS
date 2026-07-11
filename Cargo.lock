@@ -3435,6 +3435,7 @@ name = "terminalos-git"
 version = "0.4.0"
 dependencies = [
  "git2",
+ "tempfile",
  "terminalos-shared",
 ]
 

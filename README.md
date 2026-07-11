@@ -6,7 +6,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1–4)
+## Features (Phase 1–5)
 
 - **Real shell** — PTY-backed bash/zsh with streaming output
 - **ANSI colors** — full vt100 terminal emulation in the UI
@@ -19,6 +19,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Chat history** — conversations persisted to SQLite across sessions
 - **Coding agent** — slash commands for edit, fix, review, search, and more
 - **Safe execution** — file writes and shell commands require explicit confirmation
+- **Git assistant** — commit messages, PR summaries, diff explain, blame, staging, health checks
 
 ## Quick Start
 
@@ -78,6 +79,19 @@ Focus the AI chat panel (`Ctrl+2`) and use slash commands:
 | `/analyze` | Repository architecture analysis |
 
 File writes and shell commands require pressing `y` to confirm or `n` to cancel.
+
+### Git Assistant (Slash Commands)
+
+| Command | Description |
+|---------|-------------|
+| `/commit` | Generate commit message from staged changes |
+| `/pr [base]` | PR summary vs base branch (default: `main`) |
+| `/diff [path]` | Explain staged and unstaged changes |
+| `/conflict [path]` | Analyze and resolve merge conflicts |
+| `/stage [path]` | Stage files (lists changes if no path) |
+| `/unstage [path]` | Unstage files |
+| `/blame <path> [line]` | Explain git blame history |
+| `/health` | Repository health check with recommendations |
 
 ## Keyboard Shortcuts
 
