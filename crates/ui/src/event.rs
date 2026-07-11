@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use terminalos_config::{GlobalAction, KeybindingResolver};
 
 /// Which pane currently has keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -56,65 +57,13 @@ pub fn map_key_event(
     focus: FocusedPane,
     terminal_search: bool,
     pending_action: bool,
+    bindings: &KeybindingResolver,
 ) -> AppAction {
-    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-    let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+    if let Some(global) = bindings.resolve(key) {
+        return global_to_action(global);
+    }
 
-    if ctrl && key.code == KeyCode::Char('q') {
-        return AppAction::Quit;
-    }
-    if ctrl && key.code == KeyCode::Char('t') {
-        return AppAction::NewTab;
-    }
-    if ctrl && key.code == KeyCode::Char('w') {
-        return AppAction::CloseTab;
-    }
-    if ctrl && shift && key.code == KeyCode::BackTab {
-        return AppAction::PrevTab;
-    }
-    if ctrl && key.code == KeyCode::Tab {
-        return AppAction::NextTab;
-    }
-    if ctrl && key.code == KeyCode::Char('b') {
-        return AppAction::ToggleSidebar;
-    }
-    if ctrl && key.code == KeyCode::Char('/') {
-        return AppAction::ToggleChat;
-    }
-    if ctrl && key.code == KeyCode::Char('`') {
-        return AppAction::ToggleLogs;
-    }
-    if ctrl && key.code == KeyCode::Char('1') {
-        return AppAction::FocusTerminal;
-    }
-    if ctrl && key.code == KeyCode::Char('2') {
-        return AppAction::FocusChat;
-    }
-    if ctrl && key.code == KeyCode::Char('3') {
-        return AppAction::FocusSidebar;
-    }
-    if ctrl && key.code == KeyCode::Char('4') {
-        return AppAction::FocusLogs;
-    }
-    if ctrl && shift && key.code == KeyCode::Up {
-        return AppAction::ResizeLogs(1);
-    }
-    if ctrl && shift && key.code == KeyCode::Down {
-        return AppAction::ResizeLogs(-1);
-    }
-    if ctrl && key.code == KeyCode::Right {
-        return AppAction::ResizeSidebar(1);
-    }
-    if ctrl && key.code == KeyCode::Left {
-        return AppAction::ResizeSidebar(-1);
-    }
-    if ctrl && key.code == KeyCode::Up {
-        return AppAction::ResizeChat(1);
-    }
-    if ctrl && key.code == KeyCode::Down {
-        return AppAction::ResizeChat(-1);
-    }
-    if key.code == KeyCode::Tab && !ctrl {
+    if key.code == KeyCode::Tab && !key.modifiers.contains(KeyModifiers::CONTROL) {
         return AppAction::CycleFocus;
     }
 
@@ -122,6 +71,29 @@ pub fn map_key_event(
         FocusedPane::Terminal => map_terminal_keys(key, terminal_search),
         FocusedPane::Chat => map_chat_keys(key, pending_action),
         FocusedPane::Sidebar | FocusedPane::Logs => map_navigation_keys(key),
+    }
+}
+
+fn global_to_action(action: GlobalAction) -> AppAction {
+    match action {
+        GlobalAction::Quit => AppAction::Quit,
+        GlobalAction::NewTab => AppAction::NewTab,
+        GlobalAction::CloseTab => AppAction::CloseTab,
+        GlobalAction::NextTab => AppAction::NextTab,
+        GlobalAction::PrevTab => AppAction::PrevTab,
+        GlobalAction::ToggleSidebar => AppAction::ToggleSidebar,
+        GlobalAction::ToggleChat => AppAction::ToggleChat,
+        GlobalAction::ToggleLogs => AppAction::ToggleLogs,
+        GlobalAction::FocusTerminal => AppAction::FocusTerminal,
+        GlobalAction::FocusChat => AppAction::FocusChat,
+        GlobalAction::FocusSidebar => AppAction::FocusSidebar,
+        GlobalAction::FocusLogs => AppAction::FocusLogs,
+        GlobalAction::ResizeSidebarIncrease => AppAction::ResizeSidebar(1),
+        GlobalAction::ResizeSidebarDecrease => AppAction::ResizeSidebar(-1),
+        GlobalAction::ResizeChatIncrease => AppAction::ResizeChat(1),
+        GlobalAction::ResizeChatDecrease => AppAction::ResizeChat(-1),
+        GlobalAction::ResizeLogsIncrease => AppAction::ResizeLogs(1),
+        GlobalAction::ResizeLogsDecrease => AppAction::ResizeLogs(-1),
     }
 }
 

@@ -17,6 +17,10 @@ struct Cli {
     /// Path to config directory
     #[arg(long)]
     config_dir: Option<PathBuf>,
+
+    /// Configuration profile to load (default, minimal, coding, or custom)
+    #[arg(long)]
+    profile: Option<String>,
 }
 
 fn main() -> terminalos_shared::Result<()> {
@@ -35,7 +39,13 @@ fn main() -> terminalos_shared::Result<()> {
         None => ConfigLoader::default_paths(),
     };
 
-    let config = loader.ensure_default()?;
+    let config = match cli.profile {
+        Some(ref name) => {
+            info!("Loading profile: {name}");
+            loader.load_with_profile(name)?
+        }
+        None => loader.ensure_default()?,
+    };
     info!("TerminalOS v{} starting", env!("CARGO_PKG_VERSION"));
 
     let mut app = TerminalApp::new(TerminalAppOptions {

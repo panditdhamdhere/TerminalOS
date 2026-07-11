@@ -68,10 +68,10 @@
 - [x] Dynamic loading
 - [x] Plugin marketplace
 
-## Phase 9 — Configuration
+## Phase 9 — Configuration ✅
 
-- [ ] Profiles, themes, keybindings
-- [ ] Provider and workspace configs
+- [x] Profiles, themes, keybindings
+- [x] Provider and workspace configs
 
 ## Phase 10 — Developer Experience
 

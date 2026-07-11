@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use terminalos_shared::ThemeMode;
 
+use crate::keybindings::Keybindings;
+
 /// Root application configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -8,6 +10,9 @@ pub struct AppConfig {
     pub layout: LayoutConfig,
     pub providers: Vec<ProviderConfig>,
     pub default_provider: Option<String>,
+    pub active_profile: Option<String>,
+    #[serde(default)]
+    pub keybindings: Keybindings,
     #[serde(default)]
     pub agent: AgentConfig,
     #[serde(default)]
@@ -25,6 +30,8 @@ impl Default for AppConfig {
             layout: LayoutConfig::default(),
             providers: default_providers(),
             default_provider: Some("ollama".to_string()),
+            active_profile: Some("default".to_string()),
+            keybindings: Keybindings::default(),
             agent: AgentConfig::default(),
             workspace: WorkspaceConfig::default(),
             search: SearchConfig::default(),
@@ -88,8 +95,10 @@ fn default_providers() -> Vec<ProviderConfig> {
 
 /// UI-related configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct UiConfig {
     pub theme: ThemeMode,
+    pub theme_preset: Option<String>,
     pub show_sidebar: bool,
     pub show_chat: bool,
     pub show_logs: bool,
@@ -101,6 +110,7 @@ impl Default for UiConfig {
     fn default() -> Self {
         Self {
             theme: ThemeMode::Dark,
+            theme_preset: None,
             show_sidebar: true,
             show_chat: true,
             show_logs: true,
@@ -112,6 +122,7 @@ impl Default for UiConfig {
 
 /// Resizable pane layout configuration (percentages).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct LayoutConfig {
     pub sidebar_width_percent: u16,
     pub chat_width_percent: u16,

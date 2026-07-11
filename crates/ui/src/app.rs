@@ -11,13 +11,12 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use terminalos_agent::{AgentOutcome, AgentSession, ConfirmedResult, parse_slash_command};
 use terminalos_ai::ChatEngine;
-use terminalos_config::AppConfig;
-use terminalos_config::ConfigLoader;
+use terminalos_config::{AppConfig, ConfigLoader, KeybindingResolver, resolve_theme};
 use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
 use terminalos_memory::{ConversationRecord, MemoryStore};
 use terminalos_plugin::PluginManager;
-use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme, ThemeMode};
+use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme};
 use terminalos_terminal::{ShellManager, ShellSession, TerminalTab, key_event_to_bytes};
 use terminalos_workspace::{
     UiSnapshot, WorkspaceManager, WorkspaceSnapshot, WorkspaceStore, tabs_from_session,
@@ -49,6 +48,7 @@ fn default_chat_session() -> SessionId {
 pub struct TerminalApp {
     config: AppConfig,
     theme: Theme,
+    keybindings: KeybindingResolver,
     shell: ShellManager,
     workspace_manager: WorkspaceManager,
     file_tree: Option<FileNode>,
@@ -85,10 +85,11 @@ impl TerminalApp {
             .map(|p| p.display().to_string())
             .unwrap_or_else(|| ".".to_string());
 
-        let theme = match options.config.ui.theme {
-            ThemeMode::Dark => Theme::dark(),
-            ThemeMode::Light => Theme::light(),
-        };
+        let theme = resolve_theme(
+            options.config.ui.theme,
+            options.config.ui.theme_preset.as_deref(),
+        );
+        let keybindings = KeybindingResolver::new(&options.config.keybindings);
 
         let mut workspace_manager = WorkspaceManager::new();
         let mut workspace_name = "local".to_string();
@@ -193,12 +194,18 @@ impl TerminalApp {
             )));
         }
 
+        if let Some(profile) = options.config.active_profile.as_deref() {
+            logs.push(LogEntry::info(format!("Active profile: {profile}")));
+            info!("Active profile: {profile}");
+        }
+
         Ok(Self {
             show_sidebar,
             show_chat,
             show_logs,
             config: options.config,
             theme,
+            keybindings,
             shell,
             workspace_manager,
             file_tree,
@@ -271,7 +278,8 @@ impl TerminalApp {
                     Event::Key(key) => {
                         let search = self.shell.is_search_mode();
                         let pending = self.agent.pending().is_some();
-                        let action = map_key_event(key, self.focus, search, pending);
+                        let action =
+                            map_key_event(key, self.focus, search, pending, &self.keybindings);
                         self.handle_action(action);
                     }
                     Event::Mouse(mouse) => self.handle_mouse(mouse),

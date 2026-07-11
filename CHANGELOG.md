@@ -2,6 +2,18 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.9.0] - 2026-07-11
+
+### Added
+
+- Configuration profiles (`default`, `minimal`, `coding`) with per-profile UI and layout overrides
+- Theme presets: dark, light, dracula, nord, solarized-dark via `theme_preset` in config
+- Configurable global keybindings with `KeybindingResolver` and optional `keybindings.toml` override
+- `ConfigLoader::load_with_profile()` and `set_active_profile()` for profile switching
+- Terminal `--profile` flag to launch with a specific profile
+- CLI `config show`, `config themes`, `config profile list`, and `config profile use` commands
+- `focus_logs` default keybinding (`Ctrl+4`)
+
 ## [0.8.0] - 2026-07-11
 
 ### Added

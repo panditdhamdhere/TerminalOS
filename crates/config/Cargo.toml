@@ -10,6 +10,7 @@ rust-version.workspace = true
 description = "Configuration management for TerminalOS."
 
 [dependencies]
+crossterm.workspace = true
 serde.workspace = true
 terminalos-shared.workspace = true
 thiserror.workspace = true

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Light or dark theme mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ThemeMode {
     #[default]
     Dark,

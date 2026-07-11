@@ -6,7 +6,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1–8)
+## Features (Phase 1–9)
 
 - **Real shell** — PTY-backed bash/zsh with streaming output
 - **ANSI colors** — full vt100 terminal emulation in the UI
@@ -25,6 +25,9 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Semantic search** — tree-sitter chunking with Ollama embeddings and hybrid ranking
 - **Code-aware results** — search hits include symbol names and line ranges
 - **Plugin SDK** — dynamic Rust plugins with marketplace install and `/plugin` commands
+- **Profiles** — `default`, `minimal`, and `coding` layouts with per-profile UI overrides
+- **Theme presets** — dracula, nord, solarized-dark, and built-in dark/light themes
+- **Keybindings** — configurable global shortcuts via `config.toml` or `keybindings.toml`
 
 ## Quick Start
 
@@ -53,6 +56,12 @@ Or with a specific workspace:
 cargo run -p terminalos -- --workspace /path/to/project
 ```
 
+Or with a configuration profile:
+
+```bash
+cargo run -p terminalos -- --profile minimal
+```
+
 ### CLI Tools
 
 ```bash
@@ -76,6 +85,12 @@ cargo run -p terminalos-cli -- plugins marketplace
 cargo build -p terminalos-plugin-hello
 cargo run -p terminalos-cli -- plugins install hello
 cargo run -p terminalos-cli -- plugins run hello greet TerminalOS
+
+# Configuration
+cargo run -p terminalos-cli -- config show
+cargo run -p terminalos-cli -- config themes
+cargo run -p terminalos-cli -- config profile list
+cargo run -p terminalos-cli -- config profile use minimal
 ```
 
 ### Coding Agent (Slash Commands)
@@ -132,6 +147,20 @@ File writes and shell commands require pressing `y` to confirm or `n` to cancel.
 | `Ctrl+Shift+↑/↓` | Scroll terminal |
 | `Page Up/Down` | Scroll terminal |
 | `Ctrl+Q` | Quit |
+
+Keybindings are configurable in `~/.config/terminalos/config.toml` or `keybindings.toml`. See bundled profiles in `profiles/` for layout presets.
+
+## Configuration
+
+Default config directory: `~/.config/terminalos/`
+
+| File | Purpose |
+|------|---------|
+| `config.toml` | Providers, workspace, active profile, keybindings |
+| `keybindings.toml` | Optional global shortcut overrides |
+| `profiles/*.toml` | Named profiles with partial UI/layout overrides |
+
+Set `theme_preset = "dracula"` under `[ui]` for named color palettes.
 
 ## Architecture
 

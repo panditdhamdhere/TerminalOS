@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use terminalos_config::ConfigLoader;
+use terminalos_config::{ConfigLoader, builtin_preset_names};
 use terminalos_git::GitRepository;
 use terminalos_indexer::{ProjectIndexer, hybrid_config_from_embedding, semantic_db_for_index};
 use terminalos_plugin::{PluginInstaller, PluginManager, PluginMarketplace};
@@ -67,13 +67,39 @@ enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: usize,
     },
-    /// Print configuration path
-    Config,
+    /// Configuration management
+    Config {
+        #[command(subcommand)]
+        command: Option<ConfigCommands>,
+    },
     /// Manage plugins
     Plugins {
         #[command(subcommand)]
         command: PluginCommands,
     },
+}
+
+#[derive(Debug, Subcommand)]
+enum ConfigCommands {
+    /// Print the active configuration file path
+    Path,
+    /// Show resolved configuration summary
+    Show,
+    /// List built-in theme presets
+    Themes,
+    /// Manage configuration profiles
+    Profile {
+        #[command(subcommand)]
+        command: ProfileCommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ProfileCommands {
+    /// List available profiles
+    List,
+    /// Set the active profile in config.toml
+    Use { name: String },
 }
 
 #[derive(Debug, Subcommand)]
@@ -185,9 +211,52 @@ fn main() -> terminalos_shared::Result<()> {
                 }
             }
         }
-        Commands::Config => {
+        Commands::Config { command } => {
             let loader = ConfigLoader::default_paths();
-            println!("{}", loader.config_file_path().display());
+            match command {
+                None | Some(ConfigCommands::Path) => {
+                    println!("{}", loader.config_file_path().display());
+                }
+                Some(ConfigCommands::Show) => {
+                    let config = loader.load().unwrap_or_default();
+                    println!("Config: {}", loader.config_file_path().display());
+                    println!(
+                        "Profile: {}",
+                        config.active_profile.as_deref().unwrap_or("none")
+                    );
+                    println!("Theme: {:?}", config.ui.theme);
+                    if let Some(preset) = &config.ui.theme_preset {
+                        println!("Theme preset: {preset}");
+                    }
+                    println!("Providers: {}", config.providers.len());
+                    for provider in &config.providers {
+                        let status = if provider.enabled { "on" } else { "off" };
+                        println!("  - {} ({status})", provider.name);
+                    }
+                    println!("Workspace autosave: {}s", config.workspace.autosave_secs);
+                }
+                Some(ConfigCommands::Themes) => {
+                    println!("Built-in theme presets:");
+                    for name in builtin_preset_names() {
+                        println!("  - {name}");
+                    }
+                }
+                Some(ConfigCommands::Profile { command }) => match command {
+                    ProfileCommands::List => {
+                        loader.ensure_default()?;
+                        for name in loader.list_profiles()? {
+                            println!("{name}");
+                        }
+                    }
+                    ProfileCommands::Use { name } => {
+                        let config = loader.set_active_profile(&name)?;
+                        println!("Active profile set to: {name}");
+                        println!("Sidebar: {}", config.ui.show_sidebar);
+                        println!("Chat: {}", config.ui.show_chat);
+                        println!("Logs: {}", config.ui.show_logs);
+                    }
+                },
+            }
         }
         Commands::Plugins { command } => match command {
             PluginCommands::List => {

@@ -70,6 +70,16 @@ Keyboard and mouse events map to `AppAction` variants. The focused pane (`Focuse
 
 Plugins export a stable C ABI (`terminalos_plugin_entry`) and ship with a `plugin.toml` manifest. `PluginManager` discovers installed plugins, loads dynamic libraries, and routes commands from the CLI and `/plugin` slash command. The bundled marketplace catalog supports local install of example plugins.
 
+### Configuration
+
+Configuration lives in `~/.config/terminalos/`:
+
+- `config.toml` — active profile, providers, workspace, and inline keybindings
+- `keybindings.toml` — optional override for global shortcuts
+- `profiles/` — named profiles (`default`, `minimal`, `coding`) with partial section overrides
+
+`ConfigLoader` merges the base config, keybindings override, and active profile at startup. Theme presets (`dracula`, `nord`, `solarized-dark`) resolve through `resolve_theme()`. The UI reads shortcuts from `KeybindingResolver` instead of hardcoded bindings.
+
 ### Security
 
 AI-generated shell commands are never executed automatically. All destructive actions require explicit user confirmation (Phase 4+).
