@@ -206,4 +206,48 @@ impl ChatEngine {
             .map(|m| (m.role, m.content.clone()))
             .collect()
     }
+
+    /// Appends a display message without triggering a provider call.
+    pub fn push_message(&mut self, role: MessageRole, content: String) {
+        self.messages.push(DisplayMessage {
+            role,
+            content,
+            streaming: false,
+        });
+    }
+
+    /// Runs a one-shot completion for agent tool loops (non-streaming).
+    pub fn complete_sync(
+        &self,
+        messages: &[ChatMessage],
+        runtime: &tokio::runtime::Runtime,
+    ) -> Result<String> {
+        let provider = self
+            .registry
+            .get(&self.provider_name)
+            .or_else(|| self.registry.default_provider())
+            .ok_or_else(|| Error::Ai("no AI provider configured".to_string()))?;
+
+        let request = CompletionRequest {
+            messages: messages.to_vec(),
+            model: self.model.clone(),
+            temperature: 0.2,
+            max_tokens: Some(8192),
+        };
+
+        let mut stream = provider.complete(request);
+        runtime.block_on(async {
+            let mut content = String::new();
+            while let Some(chunk) = stream.next().await {
+                match chunk? {
+                    StreamChunk {
+                        content: part,
+                        done,
+                    } if !done => content.push_str(&part),
+                    _ => {}
+                }
+            }
+            Ok(content)
+        })
+    }
 }

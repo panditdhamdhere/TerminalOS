@@ -1,0 +1,26 @@
+[package]
+name = "terminalos-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Coding agent and slash commands for TerminalOS."
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+terminalos-ai.workspace = true
+terminalos-config.workspace = true
+terminalos-filesystem.workspace = true
+terminalos-git.workspace = true
+terminalos-indexer.workspace = true
+terminalos-search.workspace = true
+terminalos-shared.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3.14"

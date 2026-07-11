@@ -2,6 +2,17 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.4.0] - 2026-07-11
+
+### Added
+
+- Coding agent crate with slash commands: `/edit`, `/create`, `/fix`, `/refactor`, `/explain`, `/test`, `/review`, `/search`, `/docs`, `/analyze`
+- Multi-step agent tool loop with read, write, search, and run_command tools
+- Workspace-sandboxed `FileOps` for read/write/create/rename/delete
+- Confirmation UI for file writes, deletes, and shell commands (`y`/`n`)
+- Agent config section in `config.toml` (`max_iterations`, confirm flags)
+- Code search integration via Tantivy index in agent `/search` command
+
 ## [0.3.0] - 2026-07-11
 
 ### Added

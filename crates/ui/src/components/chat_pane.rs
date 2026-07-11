@@ -3,6 +3,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget, Wrap};
+use terminalos_agent::PendingAction;
 use terminalos_ai::{DisplayMessage, MessageRole};
 use terminalos_shared::Theme;
 
@@ -19,6 +20,7 @@ pub struct ChatPaneProps<'a> {
     pub focused: FocusedPane,
     pub scroll: usize,
     pub streaming: bool,
+    pub pending: Option<&'a PendingAction>,
 }
 
 /// Renders the AI chat panel with markdown and syntax-highlighted responses.
@@ -54,8 +56,9 @@ pub fn render_chat_pane(area: Rect, buf: &mut Buffer, props: &ChatPaneProps<'_>)
         return;
     }
 
+    let pending_rows = if props.pending.is_some() { 3 } else { 0 };
     let messages_area = Rect {
-        height: inner.height.saturating_sub(1),
+        height: inner.height.saturating_sub(1 + pending_rows),
         ..inner
     };
 
@@ -113,6 +116,43 @@ pub fn render_chat_pane(area: Rect, buf: &mut Buffer, props: &ChatPaneProps<'_>)
         .wrap(Wrap { trim: false })
         .style(Style::default().fg(palette.foreground));
     Widget::render(paragraph, messages_area, buf);
+
+    if let Some(pending) = props.pending {
+        let confirm_area = Rect {
+            y: inner.y + messages_area.height,
+            height: 2,
+            width: inner.width,
+            x: inner.x,
+        };
+        let mut confirm_lines = vec![
+            Line::from(Span::styled(
+                format!("⚠ {}", pending.summary),
+                Style::default()
+                    .fg(palette.warning)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::styled(
+                "[y] confirm  [n] cancel",
+                Style::default().fg(palette.muted),
+            )),
+        ];
+        if !pending.preview.is_empty() {
+            let preview: String = pending
+                .preview
+                .lines()
+                .take(3)
+                .collect::<Vec<_>>()
+                .join("\n");
+            confirm_lines.insert(
+                1,
+                Line::from(Span::styled(
+                    preview,
+                    Style::default().fg(palette.foreground),
+                )),
+            );
+        }
+        Widget::render(Paragraph::new(confirm_lines), confirm_area, buf);
+    }
 
     let input_area = Rect {
         y: inner.y + inner.height.saturating_sub(1),

@@ -4,6 +4,7 @@ members = [
     "apps/cli",
     "apps/daemon",
     "apps/terminal",
+    "crates/agent",
     "crates/ai",
     "crates/config",
     "crates/core",
@@ -21,7 +22,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 license = "MIT"
 authors = ["Pandit Dhamdhere"]
@@ -63,6 +64,7 @@ bytes = "1.9"
 tokio-stream = "0.1"
 
 # Internal crates
+terminalos-agent = { path = "crates/agent" }
 terminalos-ai = { path = "crates/ai" }
 terminalos-config = { path = "crates/config" }
 terminalos-core = { path = "crates/core" }

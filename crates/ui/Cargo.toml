@@ -15,6 +15,7 @@ crossterm.workspace = true
 pulldown-cmark.workspace = true
 ratatui.workspace = true
 syntect.workspace = true
+terminalos-agent.workspace = true
 terminalos-ai.workspace = true
 terminalos-config.workspace = true
 terminalos-core.workspace = true

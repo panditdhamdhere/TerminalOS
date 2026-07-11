@@ -42,6 +42,8 @@ pub enum AppAction {
     ChatInput(char),
     ChatBackspace,
     ChatSubmit,
+    ConfirmPending,
+    RejectPending,
     ScrollUp,
     ScrollDown,
     Noop,
@@ -49,7 +51,12 @@ pub enum AppAction {
 
 /// Maps crossterm key events to application actions based on focused pane.
 #[must_use]
-pub fn map_key_event(key: KeyEvent, focus: FocusedPane, terminal_search: bool) -> AppAction {
+pub fn map_key_event(
+    key: KeyEvent,
+    focus: FocusedPane,
+    terminal_search: bool,
+    pending_action: bool,
+) -> AppAction {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let shift = key.modifiers.contains(KeyModifiers::SHIFT);
 
@@ -113,7 +120,7 @@ pub fn map_key_event(key: KeyEvent, focus: FocusedPane, terminal_search: bool) -
 
     match focus {
         FocusedPane::Terminal => map_terminal_keys(key, terminal_search),
-        FocusedPane::Chat => map_chat_keys(key),
+        FocusedPane::Chat => map_chat_keys(key, pending_action),
         FocusedPane::Sidebar | FocusedPane::Logs => map_navigation_keys(key),
     }
 }
@@ -161,7 +168,15 @@ fn map_terminal_keys(key: KeyEvent, search_mode: bool) -> AppAction {
     AppAction::TerminalKey(key)
 }
 
-fn map_chat_keys(key: KeyEvent) -> AppAction {
+fn map_chat_keys(key: KeyEvent, pending_action: bool) -> AppAction {
+    if pending_action {
+        return match key.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => AppAction::ConfirmPending,
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => AppAction::RejectPending,
+            _ => AppAction::Noop,
+        };
+    }
+
     match key.code {
         KeyCode::Char(c) => AppAction::ChatInput(c),
         KeyCode::Backspace => AppAction::ChatBackspace,

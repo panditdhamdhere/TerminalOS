@@ -32,13 +32,13 @@
 - [x] Markdown rendering
 - [x] Syntax highlighting
 
-## Phase 4 — Coding Agent
+## Phase 4 — Coding Agent ✅
 
-- [ ] `/edit`, `/create`, `/fix`, `/refactor`, `/explain`, `/test`, `/review`, `/search`
-- [ ] Read/modify/rename/delete files
-- [ ] Run commands (with confirmation)
-- [ ] Repository analysis
-- [ ] Documentation generation
+- [x] `/edit`, `/create`, `/fix`, `/refactor`, `/explain`, `/test`, `/review`, `/search`, `/docs`, `/analyze`
+- [x] Read/modify/rename/delete files
+- [x] Run commands (with confirmation)
+- [x] Repository analysis
+- [x] Documentation generation
 
 ## Phase 5 — Git Assistant
 

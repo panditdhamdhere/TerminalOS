@@ -6,7 +6,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1 + Phase 2 + Phase 3)
+## Features (Phase 1–4)
 
 - **Real shell** — PTY-backed bash/zsh with streaming output
 - **ANSI colors** — full vt100 terminal emulation in the UI
@@ -17,6 +17,8 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **AI chat** — streaming responses with markdown and syntax highlighting
 - **Multi-provider** — OpenAI, Anthropic, OpenRouter, Ollama, Gemini, DeepSeek
 - **Chat history** — conversations persisted to SQLite across sessions
+- **Coding agent** — slash commands for edit, fix, review, search, and more
+- **Safe execution** — file writes and shell commands require explicit confirmation
 
 ## Quick Start
 
@@ -57,6 +59,25 @@ cargo run -p terminalos-cli -- index --path .
 # Search indexed code
 cargo run -p terminalos-cli -- search "TerminalApp"
 ```
+
+### Coding Agent (Slash Commands)
+
+Focus the AI chat panel (`Ctrl+2`) and use slash commands:
+
+| Command | Description |
+|---------|-------------|
+| `/search <query>` | Search codebase (Tantivy index) |
+| `/explain <path>` | Explain a file |
+| `/edit <path> <instruction>` | Edit a file with AI |
+| `/fix <path>` | Fix bugs in a file |
+| `/refactor <path> <instruction>` | Refactor a file |
+| `/create <path> <description>` | Create a new file |
+| `/review <path>` | Code review with git context |
+| `/test [args]` | Propose and run tests (requires confirmation) |
+| `/docs <path>` | Generate documentation |
+| `/analyze` | Repository architecture analysis |
+
+File writes and shell commands require pressing `y` to confirm or `n` to cancel.
 
 ## Keyboard Shortcuts
 

@@ -3326,7 +3326,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "terminalos-config",
@@ -3338,8 +3338,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "terminalos-agent"
+version = "0.4.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "terminalos-ai",
+ "terminalos-config",
+ "terminalos-filesystem",
+ "terminalos-git",
+ "terminalos-indexer",
+ "terminalos-search",
+ "terminalos-shared",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "terminalos-ai"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "futures-util",
@@ -3355,7 +3373,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "terminalos-config",
@@ -3368,7 +3386,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-config"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "tempfile",
@@ -3379,7 +3397,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "terminalos-config",
  "terminalos-shared",
@@ -3389,7 +3407,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-daemon"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "terminalos-protocol",
@@ -3402,10 +3420,11 @@ dependencies = [
 
 [[package]]
 name = "terminalos-filesystem"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "ignore",
  "notify",
+ "tempfile",
  "terminalos-shared",
  "tokio",
  "walkdir",
@@ -3413,7 +3432,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-git"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "git2",
  "terminalos-shared",
@@ -3421,7 +3440,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-indexer"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "ignore",
  "rayon",
@@ -3432,7 +3451,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-memory"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "serde",
@@ -3446,7 +3465,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-plugin"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "libloading",
  "serde",
@@ -3456,7 +3475,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-protocol"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3466,7 +3485,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-search"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "tantivy",
@@ -3476,7 +3495,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-shared"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3487,7 +3506,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-terminal"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "arboard",
  "crossterm",
@@ -3501,13 +3520,14 @@ dependencies = [
 
 [[package]]
 name = "terminalos-ui"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "crossterm",
  "pulldown-cmark",
  "ratatui",
  "syntect",
+ "terminalos-agent",
  "terminalos-ai",
  "terminalos-config",
  "terminalos-core",
@@ -3523,7 +3543,7 @@ dependencies = [
 
 [[package]]
 name = "terminalos-workspace"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",

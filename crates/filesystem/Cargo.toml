@@ -15,3 +15,6 @@ notify.workspace = true
 terminalos-shared.workspace = true
 tokio.workspace = true
 walkdir.workspace = true
+
+[dev-dependencies]
+tempfile = "3.14"

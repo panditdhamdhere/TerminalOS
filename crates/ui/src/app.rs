@@ -9,6 +9,7 @@ use crossterm::terminal::{
 use crossterm::{ExecutableCommand, execute};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use terminalos_agent::{AgentOutcome, AgentSession, ConfirmedResult, parse_slash_command};
 use terminalos_ai::ChatEngine;
 use terminalos_config::AppConfig;
 use terminalos_config::ConfigLoader;
@@ -66,6 +67,8 @@ pub struct TerminalApp {
     last_frame: Instant,
     terminal_area: Option<ratatui::layout::Rect>,
     runtime: Runtime,
+    agent: AgentSession,
+    workspace_root: PathBuf,
 }
 
 impl TerminalApp {
@@ -109,10 +112,24 @@ impl TerminalApp {
             .unwrap_or(std::path::Path::new(".terminalos"))
             .join("memory.db");
 
+        let workspace_root = options
+            .workspace_path
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("."));
+
+        let index_path = workspace_root.join(".terminalos/search_index");
+        let agent = AgentSession::new(
+            workspace_root.clone(),
+            index_path,
+            options.config.agent.clone(),
+        );
+
         let mut logs = vec![
             LogEntry::info("TerminalOS started"),
             LogEntry::info(format!("Workspace: {workspace_name}")),
             LogEntry::info("PTY shell sessions active"),
+            LogEntry::info("Coding agent ready — try /search, /edit, /fix"),
         ];
 
         if chat.has_providers() {
@@ -155,6 +172,8 @@ impl TerminalApp {
             last_frame: Instant::now(),
             terminal_area: None,
             runtime,
+            agent,
+            workspace_root,
         })
     }
 
@@ -204,7 +223,8 @@ impl TerminalApp {
                 {
                     Event::Key(key) => {
                         let search = self.shell.is_search_mode();
-                        let action = map_key_event(key, self.focus, search);
+                        let pending = self.agent.pending().is_some();
+                        let action = map_key_event(key, self.focus, search, pending);
                         self.handle_action(action);
                     }
                     Event::Mouse(mouse) => self.handle_mouse(mouse),
@@ -275,6 +295,7 @@ impl TerminalApp {
                     focused: self.focus,
                     scroll: self.chat_scroll,
                     streaming: self.chat.is_streaming(),
+                    pending: self.agent.pending(),
                 },
             );
         }
@@ -389,6 +410,8 @@ impl TerminalApp {
                 self.chat_input.pop();
             }
             AppAction::ChatSubmit => self.submit_chat_message(),
+            AppAction::ConfirmPending => self.confirm_pending_action(),
+            AppAction::RejectPending => self.reject_pending_action(),
             AppAction::ScrollUp => self.scroll_up(),
             AppAction::ScrollDown => self.scroll_down(),
             AppAction::Noop => {}
@@ -478,12 +501,108 @@ impl TerminalApp {
             return;
         }
 
+        if let Some(command) = parse_slash_command(&content) {
+            self.handle_slash_command(content, command);
+            return;
+        }
+
         match self.chat.submit(content.clone()) {
             Ok(()) => {
                 self.push_log(LogLevel::Info, "Chat message sent");
                 self.persist_message(terminalos_ai::MessageRole::User, content);
             }
             Err(e) => self.push_log(LogLevel::Error, format!("Chat error: {e}")),
+        }
+    }
+
+    fn handle_slash_command(&mut self, display: String, command: terminalos_agent::SlashCommand) {
+        self.chat
+            .push_message(terminalos_ai::MessageRole::User, display.clone());
+        self.persist_message(terminalos_ai::MessageRole::User, display.clone());
+        self.push_log(LogLevel::Info, format!("Agent command: {display}"));
+
+        match self.agent.handle_command(command) {
+            Ok(AgentOutcome::Message(message)) => {
+                self.chat
+                    .push_message(terminalos_ai::MessageRole::Assistant, message.clone());
+                self.persist_message(terminalos_ai::MessageRole::Assistant, message);
+            }
+            Ok(AgentOutcome::StartChat(prompt)) => {
+                if let Err(e) = self.chat.submit(prompt) {
+                    self.push_log(LogLevel::Error, format!("Agent chat error: {e}"));
+                }
+            }
+            Ok(AgentOutcome::RunAgentLoop(prompt)) => self.run_agent_loop(&prompt),
+            Ok(AgentOutcome::Finished(message)) => {
+                self.chat
+                    .push_message(terminalos_ai::MessageRole::Assistant, message.clone());
+                self.persist_message(terminalos_ai::MessageRole::Assistant, message);
+            }
+            Ok(AgentOutcome::Pending(_)) => {
+                self.push_log(LogLevel::Info, "Action requires confirmation — press y/n");
+            }
+            Ok(AgentOutcome::Error(message)) => {
+                self.push_log(LogLevel::Error, message);
+            }
+            Err(e) => self.push_log(LogLevel::Error, format!("Agent error: {e}")),
+        }
+    }
+
+    fn run_agent_loop(&mut self, prompt: &str) {
+        match self.agent.run_agent_loop(&self.chat, &self.runtime, prompt) {
+            Ok(AgentOutcome::Finished(message)) => {
+                self.chat
+                    .push_message(terminalos_ai::MessageRole::Assistant, message.clone());
+                self.persist_message(terminalos_ai::MessageRole::Assistant, message);
+            }
+            Ok(AgentOutcome::Pending(_)) => {
+                self.push_log(LogLevel::Info, "Action requires confirmation — press y/n");
+            }
+            Ok(other) => {
+                self.push_log(LogLevel::Warn, format!("Agent stopped: {other:?}"));
+            }
+            Err(e) => self.push_log(LogLevel::Error, format!("Agent loop failed: {e}")),
+        }
+    }
+
+    fn confirm_pending_action(&mut self) {
+        match self.agent.confirm_pending() {
+            Ok(ConfirmedResult::FileChanged(message)) => {
+                self.chat
+                    .push_message(terminalos_ai::MessageRole::Assistant, message.clone());
+                self.persist_message(terminalos_ai::MessageRole::Assistant, message);
+                self.refresh_file_tree();
+                self.push_log(LogLevel::Info, "Agent action confirmed");
+            }
+            Ok(ConfirmedResult::RunCommand(command)) => {
+                let bytes = format!("{command}\n");
+                if let Err(e) = self.shell.write_bytes(bytes.as_bytes()) {
+                    self.push_log(LogLevel::Error, format!("Failed to run command: {e}"));
+                } else {
+                    self.chat.push_message(
+                        terminalos_ai::MessageRole::Assistant,
+                        format!("Running: `{command}`"),
+                    );
+                    self.push_log(LogLevel::Info, format!("Executed: {command}"));
+                }
+            }
+            Err(e) => self.push_log(LogLevel::Error, format!("Confirm failed: {e}")),
+        }
+    }
+
+    fn reject_pending_action(&mut self) {
+        match self.agent.reject_pending() {
+            AgentOutcome::Message(message) => {
+                self.chat
+                    .push_message(terminalos_ai::MessageRole::Assistant, message);
+            }
+            _ => self.push_log(LogLevel::Info, "Action cancelled"),
+        }
+    }
+
+    fn refresh_file_tree(&mut self) {
+        if let Ok(tree) = FileTree::new(&self.workspace_root).build(3) {
+            self.file_tree = Some(tree);
         }
     }
 

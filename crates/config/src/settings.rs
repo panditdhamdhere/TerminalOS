@@ -8,6 +8,8 @@ pub struct AppConfig {
     pub layout: LayoutConfig,
     pub providers: Vec<ProviderConfig>,
     pub default_provider: Option<String>,
+    #[serde(default)]
+    pub agent: AgentConfig,
 }
 
 impl Default for AppConfig {
@@ -17,6 +19,7 @@ impl Default for AppConfig {
             layout: LayoutConfig::default(),
             providers: default_providers(),
             default_provider: Some("ollama".to_string()),
+            agent: AgentConfig::default(),
         }
     }
 }
@@ -139,4 +142,22 @@ pub enum ProviderType {
     Ollama,
     Gemini,
     DeepSeek,
+}
+
+/// Coding agent configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfig {
+    pub max_iterations: u8,
+    pub require_confirm_write: bool,
+    pub require_confirm_shell: bool,
+}
+
+impl Default for AgentConfig {
+    fn default() -> Self {
+        Self {
+            max_iterations: 8,
+            require_confirm_write: true,
+            require_confirm_shell: true,
+        }
+    }
 }
