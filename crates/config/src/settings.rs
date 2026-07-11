@@ -10,6 +10,8 @@ pub struct AppConfig {
     pub default_provider: Option<String>,
     #[serde(default)]
     pub agent: AgentConfig,
+    #[serde(default)]
+    pub workspace: WorkspaceConfig,
 }
 
 impl Default for AppConfig {
@@ -20,6 +22,7 @@ impl Default for AppConfig {
             providers: default_providers(),
             default_provider: Some("ollama".to_string()),
             agent: AgentConfig::default(),
+            workspace: WorkspaceConfig::default(),
         }
     }
 }
@@ -158,6 +161,22 @@ impl Default for AgentConfig {
             max_iterations: 8,
             require_confirm_write: true,
             require_confirm_shell: true,
+        }
+    }
+}
+
+/// Workspace persistence and session restoration settings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceConfig {
+    pub auto_restore: bool,
+    pub autosave_secs: u64,
+}
+
+impl Default for WorkspaceConfig {
+    fn default() -> Self {
+        Self {
+            auto_restore: true,
+            autosave_secs: 30,
         }
     }
 }

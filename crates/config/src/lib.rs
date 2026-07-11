@@ -6,4 +6,6 @@ pub mod settings;
 
 pub use keybindings::Keybindings;
 pub use loader::ConfigLoader;
-pub use settings::{AgentConfig, AppConfig, LayoutConfig, ProviderConfig, ProviderType, UiConfig};
+pub use settings::{
+    AgentConfig, AppConfig, LayoutConfig, ProviderConfig, ProviderType, UiConfig, WorkspaceConfig,
+};

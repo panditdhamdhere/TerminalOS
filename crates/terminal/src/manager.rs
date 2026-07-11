@@ -19,6 +19,7 @@ pub struct ShellManager {
     terminal_cols: u16,
     search_mode: bool,
     search_input: String,
+    workspace_env: HashMap<String, String>,
 }
 
 impl ShellManager {
@@ -37,9 +38,47 @@ impl ShellManager {
             terminal_cols: cols.max(20),
             search_mode: false,
             search_input: String::new(),
+            workspace_env: HashMap::new(),
         };
 
-        manager.spawn_tab_shell(manager.session.active_tab().id, &cwd)?;
+        let tab_id = manager.session.active_tab().id;
+        let env = manager.workspace_env.clone();
+        manager.spawn_tab_shell(tab_id, &cwd, &env)?;
+        Ok(manager)
+    }
+
+    pub fn from_restored(
+        session: ShellSession,
+        rows: u16,
+        cols: u16,
+        env: &HashMap<String, String>,
+    ) -> Result<Self> {
+        let (output_tx, output_rx) = output_channel();
+        let mut manager = Self {
+            session,
+            emulators: HashMap::new(),
+            pty_sessions: HashMap::new(),
+            history: HashMap::new(),
+            output_rx,
+            output_tx,
+            terminal_rows: rows.max(4),
+            terminal_cols: cols.max(20),
+            search_mode: false,
+            search_input: String::new(),
+            workspace_env: env.clone(),
+        };
+
+        let tabs: Vec<(TabId, String)> = manager
+            .session
+            .tabs
+            .iter()
+            .map(|t| (t.id, t.cwd.clone()))
+            .collect();
+
+        for (tab_id, cwd) in tabs {
+            manager.spawn_tab_shell(tab_id, &cwd, env)?;
+        }
+
         Ok(manager)
     }
 
@@ -96,11 +135,16 @@ impl ShellManager {
         self.write_bytes(data)
     }
 
+    pub fn set_workspace_env(&mut self, env: HashMap<String, String>) {
+        self.workspace_env = env;
+    }
+
     pub fn new_tab(&mut self) -> Result<()> {
         let cwd = self.session.active_tab().cwd.clone();
         self.session.new_tab();
         let tab_id = self.session.active_tab().id;
-        self.spawn_tab_shell(tab_id, &cwd)
+        let env = self.workspace_env.clone();
+        self.spawn_tab_shell(tab_id, &cwd, &env)
     }
 
     pub fn close_active_tab(&mut self) -> bool {
@@ -214,7 +258,12 @@ impl ShellManager {
         self.terminal_cols as usize
     }
 
-    fn spawn_tab_shell(&mut self, tab_id: TabId, cwd: &str) -> Result<()> {
+    fn spawn_tab_shell(
+        &mut self,
+        tab_id: TabId,
+        cwd: &str,
+        env: &HashMap<String, String>,
+    ) -> Result<()> {
         self.emulators.insert(
             tab_id,
             TerminalEmulator::new(self.terminal_rows, self.terminal_cols),
@@ -227,6 +276,7 @@ impl ShellManager {
             self.terminal_rows,
             self.terminal_cols,
             self.output_tx.clone(),
+            env,
         )?;
         self.pty_sessions.insert(tab_id, pty);
         Ok(())

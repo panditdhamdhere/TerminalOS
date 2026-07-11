@@ -2,6 +2,18 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.6.0] - 2026-07-11
+
+### Added
+
+- Workspace session persistence in SQLite (`workspace.db`)
+- Stable workspace IDs derived from project paths (UUID v5)
+- Terminal tab, branch, and UI state restoration on startup
+- Workspace environment variable memory applied to new PTY sessions
+- Periodic autosave and save-on-quit for workspace snapshots
+- `WorkspaceConfig` in `config.toml` (`auto_restore`, `autosave_secs`)
+- CLI `workspaces` command to list recently opened projects
+
 ## [0.5.0] - 2026-07-11
 
 ### Added

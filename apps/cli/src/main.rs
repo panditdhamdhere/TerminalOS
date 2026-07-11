@@ -5,7 +5,8 @@ use terminalos_config::ConfigLoader;
 use terminalos_git::GitRepository;
 use terminalos_indexer::ProjectIndexer;
 use terminalos_search::{SearchEngine, SearchQuery};
-use terminalos_workspace::WorkspaceManager;
+use terminalos_workspace::{WorkspaceManager, WorkspaceStore};
+use tokio::runtime::Runtime;
 
 /// TerminalOS command-line interface.
 #[derive(Debug, Parser)]
@@ -39,6 +40,11 @@ enum Commands {
     },
     /// Open a workspace
     Open { path: PathBuf },
+    /// List recent workspaces from session store
+    Workspaces {
+        #[arg(short, long, default_value = "10")]
+        limit: usize,
+    },
     /// Print configuration path
     Config,
 }
@@ -88,6 +94,34 @@ fn main() -> terminalos_shared::Result<()> {
             let id = manager.open(&path)?;
             if let Some(ws) = manager.get(id) {
                 println!("Opened workspace: {} ({})", ws.name, ws.path.display());
+            }
+        }
+        Commands::Workspaces { limit } => {
+            let loader = ConfigLoader::default_paths();
+            let store_path = loader
+                .config_file_path()
+                .parent()
+                .unwrap_or(std::path::Path::new(".terminalos"))
+                .join("workspace.db");
+            let runtime = Runtime::new()
+                .map_err(|e| terminalos_shared::Error::Ui(format!("tokio runtime: {e}")))?;
+            let workspaces = runtime.block_on(async move {
+                let store = WorkspaceStore::open(&store_path).await?;
+                store.list_recent(limit).await
+            })?;
+            if workspaces.is_empty() {
+                println!("No saved workspaces.");
+            } else {
+                for ws in workspaces {
+                    let branch = ws.branch.unwrap_or_else(|| "none".to_string());
+                    println!(
+                        "{} — {} ({}) — {}",
+                        ws.name,
+                        ws.path,
+                        branch,
+                        ws.last_opened_at.format("%Y-%m-%d %H:%M")
+                    );
+                }
             }
         }
         Commands::Config => {

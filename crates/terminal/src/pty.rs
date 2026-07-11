@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -27,6 +28,7 @@ impl PtySession {
         rows: u16,
         cols: u16,
         output_tx: Sender<PtyOutput>,
+        env: &HashMap<String, String>,
     ) -> Result<Self> {
         let pty_system = NativePtySystem::default();
         let pair = pty_system
@@ -41,6 +43,9 @@ impl PtySession {
         let shell = default_shell();
         let mut cmd = CommandBuilder::new(&shell);
         cmd.cwd(cwd);
+        for (key, value) in env {
+            cmd.env(key, value);
+        }
 
         let child = pair
             .slave

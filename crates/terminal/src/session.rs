@@ -17,6 +17,15 @@ impl TerminalTab {
             cwd: cwd.into(),
         }
     }
+
+    #[must_use]
+    pub fn with_id(id: TabId, title: impl Into<String>, cwd: impl Into<String>) -> Self {
+        Self {
+            id,
+            title: title.into(),
+            cwd: cwd.into(),
+        }
+    }
 }
 
 /// Tab collection with active tab tracking.
@@ -34,6 +43,16 @@ impl ShellSession {
             tabs: vec![TerminalTab::new("Terminal 1", &cwd)],
             active_tab: 0,
         }
+    }
+
+    #[must_use]
+    pub fn from_tabs(tabs: Vec<TerminalTab>, active_tab: usize) -> Self {
+        let active_tab = if tabs.is_empty() {
+            0
+        } else {
+            active_tab.min(tabs.len() - 1)
+        };
+        Self { tabs, active_tab }
     }
 
     #[must_use]

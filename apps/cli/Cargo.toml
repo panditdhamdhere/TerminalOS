@@ -21,3 +21,4 @@ terminalos-indexer.workspace = true
 terminalos-search.workspace = true
 terminalos-shared.workspace = true
 terminalos-workspace.workspace = true
+tokio.workspace = true

@@ -1,5 +1,5 @@
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, MouseEvent, MouseEventKind};
@@ -17,8 +17,10 @@ use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
 use terminalos_memory::{ConversationRecord, MemoryStore};
 use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme, ThemeMode};
-use terminalos_terminal::{ShellManager, key_event_to_bytes};
-use terminalos_workspace::WorkspaceManager;
+use terminalos_terminal::{ShellManager, ShellSession, TerminalTab, key_event_to_bytes};
+use terminalos_workspace::{
+    UiSnapshot, WorkspaceManager, WorkspaceSnapshot, WorkspaceStore, tabs_from_session,
+};
 use tokio::runtime::Runtime;
 use tracing::info;
 use uuid::Uuid;
@@ -69,6 +71,8 @@ pub struct TerminalApp {
     runtime: Runtime,
     agent: AgentSession,
     workspace_root: PathBuf,
+    workspace_store_path: PathBuf,
+    last_autosave: Instant,
 }
 
 impl TerminalApp {
@@ -90,33 +94,59 @@ impl TerminalApp {
         let mut branch = None;
         let mut file_tree = None;
 
-        if let Some(path) = options.workspace_path.clone() {
-            if let Ok(id) = workspace_manager.open(&path) {
-                if let Some(ws) = workspace_manager.get(id) {
-                    workspace_name = ws.name.clone();
-                    branch = ws.branch.clone();
-                }
-                if let Ok(tree) = FileTree::new(&path).build(3) {
-                    file_tree = Some(tree);
-                }
-            }
-        }
-
-        let shell = ShellManager::new(&cwd, 24, 80)?;
-        let chat = ChatEngine::from_config(&options.config)?;
-        let runtime = Runtime::new()
-            .map_err(|e| terminalos_shared::Error::Ui(format!("tokio runtime: {e}")))?;
-        let memory_path = ConfigLoader::default_paths()
-            .config_file_path()
-            .parent()
-            .unwrap_or(std::path::Path::new(".terminalos"))
-            .join("memory.db");
-
         let workspace_root = options
             .workspace_path
             .clone()
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| PathBuf::from("."));
+
+        let _ = workspace_manager.open(&workspace_root);
+        if let Some(ws) = workspace_manager.active() {
+            workspace_name = ws.name.clone();
+            branch = ws.branch.clone();
+        }
+        if let Ok(tree) = FileTree::new(&workspace_root).build(3) {
+            file_tree = Some(tree);
+        }
+
+        let memory_path = ConfigLoader::default_paths()
+            .config_file_path()
+            .parent()
+            .unwrap_or(std::path::Path::new(".terminalos"))
+            .join("memory.db");
+        let workspace_store_path = memory_path
+            .parent()
+            .unwrap_or(std::path::Path::new(".terminalos"))
+            .join("workspace.db");
+
+        let runtime = Runtime::new()
+            .map_err(|e| terminalos_shared::Error::Ui(format!("tokio runtime: {e}")))?;
+
+        let mut shell = ShellManager::new(&cwd, 24, 80)?;
+        let mut show_sidebar = options.config.ui.show_sidebar;
+        let mut show_chat = options.config.ui.show_chat;
+        let mut show_logs = options.config.ui.show_logs;
+        let mut focus = FocusedPane::Terminal;
+
+        if options.config.workspace.auto_restore {
+            if let Some(snapshot) =
+                load_workspace_snapshot(&runtime, &workspace_store_path, &workspace_root)
+            {
+                let _ = workspace_manager.apply_snapshot(&snapshot);
+                branch = snapshot.branch.clone();
+                if let Ok(restored) = restore_shell_from_snapshot(&snapshot, 24, 80) {
+                    shell = restored;
+                }
+                show_sidebar = snapshot.ui.show_sidebar;
+                show_chat = snapshot.ui.show_chat;
+                show_logs = snapshot.ui.show_logs;
+                focus = focus_from_str(&snapshot.ui.focus_pane);
+            }
+        }
+
+        shell.set_workspace_env(workspace_manager.env());
+
+        let chat = ChatEngine::from_config(&options.config)?;
 
         let index_path = workspace_root.join(".terminalos/search_index");
         let agent = AgentSession::new(
@@ -131,6 +161,7 @@ impl TerminalApp {
             LogEntry::info("PTY shell sessions active"),
             LogEntry::info("Coding agent ready — try /search, /edit, /fix"),
             LogEntry::info("Git assistant ready — try /commit, /diff, /health"),
+            LogEntry::info("Workspace session restore enabled"),
         ];
 
         if chat.has_providers() {
@@ -150,9 +181,9 @@ impl TerminalApp {
         }
 
         Ok(Self {
-            show_sidebar: options.config.ui.show_sidebar,
-            show_chat: options.config.ui.show_chat,
-            show_logs: options.config.ui.show_logs,
+            show_sidebar,
+            show_chat,
+            show_logs,
             config: options.config,
             theme,
             shell,
@@ -165,7 +196,7 @@ impl TerminalApp {
             chat_session_id: default_chat_session(),
             memory_path,
             logs,
-            focus: FocusedPane::Terminal,
+            focus,
             sidebar_scroll: 0,
             chat_scroll: 0,
             logs_scroll: 0,
@@ -175,6 +206,8 @@ impl TerminalApp {
             runtime,
             agent,
             workspace_root,
+            workspace_store_path,
+            last_autosave: Instant::now(),
         })
     }
 
@@ -239,8 +272,18 @@ impl TerminalApp {
                 self.last_frame = Instant::now();
             }
 
+            if self.config.workspace.autosave_secs > 0
+                && self.last_autosave.elapsed()
+                    >= Duration::from_secs(self.config.workspace.autosave_secs)
+            {
+                self.save_workspace_session();
+                self.last_autosave = Instant::now();
+            }
+
             let _ = self.runtime.handle();
         }
+
+        self.save_workspace_session();
 
         if self.config.ui.mouse_enabled {
             execute!(io::stdout(), crossterm::event::DisableMouseCapture)
@@ -653,6 +696,40 @@ impl TerminalApp {
         }
     }
 
+    fn save_workspace_session(&self) {
+        let Some(ws_id) = self.workspace_manager.active_id() else {
+            return;
+        };
+
+        let tab_data: Vec<(terminalos_shared::TabId, String, String)> = self
+            .shell
+            .session()
+            .tabs
+            .iter()
+            .map(|t| (t.id, t.title.clone(), t.cwd.clone()))
+            .collect();
+        let tabs = tabs_from_session(&tab_data);
+        let ui = UiSnapshot {
+            show_sidebar: self.show_sidebar,
+            show_chat: self.show_chat,
+            show_logs: self.show_logs,
+            focus_pane: focus_to_str(self.focus).to_string(),
+            active_tab: self.shell.session().active_tab,
+        };
+
+        let Ok(snapshot) = self.workspace_manager.build_snapshot(&tabs, ui) else {
+            return;
+        };
+
+        let path = self.workspace_store_path.clone();
+        let _ = self.runtime.block_on(async move {
+            let store = WorkspaceStore::open(&path).await?;
+            store.save_snapshot(&snapshot).await?;
+            Ok::<(), terminalos_shared::Error>(())
+        });
+        let _ = ws_id;
+    }
+
     fn push_log(&mut self, level: LogLevel, message: impl Into<String>) {
         self.logs.push(LogEntry::new(level, message));
         if self.logs.len() > 200 {
@@ -675,5 +752,58 @@ fn role_to_str(role: terminalos_ai::MessageRole) -> &'static str {
         terminalos_ai::MessageRole::User => "user",
         terminalos_ai::MessageRole::Assistant => "assistant",
         terminalos_ai::MessageRole::System => "system",
+    }
+}
+
+fn load_workspace_snapshot(
+    runtime: &Runtime,
+    store_path: &Path,
+    workspace_root: &Path,
+) -> Option<WorkspaceSnapshot> {
+    let path = store_path.to_path_buf();
+    let root = workspace_root.to_path_buf();
+    runtime
+        .block_on(async move {
+            let store = WorkspaceStore::open(&path).await?;
+            let id = terminalos_workspace::id_from_path(&root);
+            store.load_snapshot(id).await
+        })
+        .ok()
+        .flatten()
+}
+
+fn restore_shell_from_snapshot(
+    snapshot: &WorkspaceSnapshot,
+    rows: u16,
+    cols: u16,
+) -> terminalos_shared::Result<ShellManager> {
+    if snapshot.tabs.is_empty() {
+        return ShellManager::new(&snapshot.path, rows, cols);
+    }
+
+    let tabs: Vec<TerminalTab> = snapshot
+        .tabs
+        .iter()
+        .map(|t| TerminalTab::with_id(t.id, &t.title, &t.cwd))
+        .collect();
+    let session = ShellSession::from_tabs(tabs, snapshot.ui.active_tab);
+    ShellManager::from_restored(session, rows, cols, &snapshot.env)
+}
+
+fn focus_from_str(value: &str) -> FocusedPane {
+    match value {
+        "chat" => FocusedPane::Chat,
+        "sidebar" => FocusedPane::Sidebar,
+        "logs" => FocusedPane::Logs,
+        _ => FocusedPane::Terminal,
+    }
+}
+
+fn focus_to_str(focus: FocusedPane) -> &'static str {
+    match focus {
+        FocusedPane::Terminal => "terminal",
+        FocusedPane::Chat => "chat",
+        FocusedPane::Sidebar => "sidebar",
+        FocusedPane::Logs => "logs",
     }
 }

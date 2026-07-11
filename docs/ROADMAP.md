@@ -52,9 +52,9 @@
 
 ## Phase 6 — Workspace Manager
 
-- [ ] Persist projects, files, tabs, branches
-- [ ] Environment variable memory
-- [ ] Session restoration
+- [x] Persist projects, files, tabs, branches
+- [x] Environment variable memory
+- [x] Session restoration
 
 ## Phase 7 — Semantic Search
 

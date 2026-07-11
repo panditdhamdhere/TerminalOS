@@ -15,6 +15,11 @@ impl WorkspaceId {
     pub fn as_uuid(&self) -> Uuid {
         self.0
     }
+
+    #[must_use]
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
 }
 
 impl Default for WorkspaceId {
@@ -63,6 +68,11 @@ impl TabId {
     #[must_use]
     pub fn as_uuid(&self) -> Uuid {
         self.0
+    }
+
+    #[must_use]
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 }
 
