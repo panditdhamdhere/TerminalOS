@@ -1,0 +1,17 @@
+[package]
+name = "terminalos-indexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Code indexer for TerminalOS."
+
+[dependencies]
+ignore.workspace = true
+rayon.workspace = true
+terminalos-search.workspace = true
+terminalos-shared.workspace = true
+walkdir.workspace = true

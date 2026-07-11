@@ -1,0 +1,85 @@
+# TerminalOS Architecture
+
+## Overview
+
+TerminalOS is a modular Rust workspace following clean architecture principles. Each crate has a single responsibility and communicates through well-defined traits and shared types.
+
+## Workspace Structure
+
+```
+terminalos/
+├── apps/
+│   ├── terminal/     # Main Ratatui application (binary: terminalos)
+│   ├── daemon/       # Background workspace daemon
+│   └── cli/          # CLI utilities (binary: tos)
+├── crates/
+│   ├── shared/       # Common types, errors, themes
+│   ├── protocol/     # IPC message definitions
+│   ├── config/       # TOML configuration
+│   ├── core/         # AppContext, event bus, DI
+│   ├── filesystem/   # File tree, file watcher
+│   ├── memory/       # SQLite session storage
+│   ├── ai/           # AI provider trait + registry
+│   ├── terminal/     # Shell sessions, tabs, buffers
+│   ├── git/          # Git repository operations
+│   ├── workspace/    # Workspace state management
+│   ├── search/       # Tantivy search engine
+│   ├── indexer/      # Project file indexer
+│   ├── plugin/       # Plugin SDK
+│   └── ui/           # Ratatui components + event loop
+├── docs/
+├── tests/
+└── .github/
+```
+
+## Layer Diagram
+
+```
+┌─────────────────────────────────────────────┐
+│              apps/terminal (TUI)            │
+├─────────────────────────────────────────────┤
+│              crates/ui (Ratatui)            │
+├──────────┬──────────┬──────────┬────────────┤
+│ terminal │    ai    │   git    │ workspace  │
+├──────────┴──────────┴──────────┴────────────┤
+│         core │ config │ filesystem │ memory  │
+├─────────────────────────────────────────────┤
+│              crates/shared (types)          │
+└─────────────────────────────────────────────┘
+```
+
+## Key Design Decisions
+
+### Dependency Injection
+
+`AppContext` holds shared state (config, theme, logs, event bus) and is injected into services. No global statics.
+
+### AI Provider Abstraction
+
+All AI backends implement the `AiProvider` trait with streaming `CompletionStream`. Providers are registered in `ProviderRegistry` from TOML config.
+
+### UI Event Model
+
+Keyboard and mouse events map to `AppAction` variants. The focused pane (`FocusedPane`) determines input routing. Layout is computed from percentage-based `LayoutConfig`.
+
+### Search Pipeline
+
+`ProjectIndexer` walks the filesystem (respecting `.gitignore`) and feeds documents into `SearchEngine` (Tantivy). The CLI exposes `index` and `search` commands.
+
+### Security
+
+AI-generated shell commands are never executed automatically. All destructive actions require explicit user confirmation (Phase 4+).
+
+## Cross-Platform
+
+- **Terminal I/O**: crossterm (raw mode, alternate screen, mouse)
+- **Git**: git2 (libgit2 bindings)
+- **Async runtime**: Tokio
+- **Database**: SQLx + SQLite
+
+## Performance Targets
+
+- Startup: < 100ms (release build)
+- Incremental indexing with background workers
+- Lazy file tree loading (depth-limited)
+- Bounded log and buffer sizes

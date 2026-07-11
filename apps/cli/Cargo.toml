@@ -1,0 +1,23 @@
+[package]
+name = "terminalos-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "CLI tool for TerminalOS."
+
+[[bin]]
+name = "terminalos-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+terminalos-config.workspace = true
+terminalos-git.workspace = true
+terminalos-indexer.workspace = true
+terminalos-search.workspace = true
+terminalos-shared.workspace = true
+terminalos-workspace.workspace = true

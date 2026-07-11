@@ -1,0 +1,89 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/cli",
+    "apps/daemon",
+    "apps/terminal",
+    "crates/ai",
+    "crates/config",
+    "crates/core",
+    "crates/filesystem",
+    "crates/git",
+    "crates/indexer",
+    "crates/memory",
+    "crates/plugin",
+    "crates/protocol",
+    "crates/search",
+    "crates/shared",
+    "crates/terminal",
+    "crates/ui",
+    "crates/workspace",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Pandit Dhamdhere"]
+repository = "https://github.com/panditdhamdhere/WarpShell"
+homepage = "https://github.com/panditdhamdhere/WarpShell"
+rust-version = "1.85"
+description = "The AI-native terminal for developers."
+
+[workspace.dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive", "env"] }
+crossterm = { version = "0.28", features = ["event-stream"] }
+git2 = "0.20"
+ignore = "0.4"
+libloading = "0.8"
+notify = "8.0"
+ratatui = { version = "0.29", features = ["crossterm", "serde"] }
+rayon = "1.10"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+tantivy = "0.22"
+thiserror = "2.0"
+tokio = { version = "1.43", features = ["full"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tree-sitter = "0.24"
+uuid = { version = "1.11", features = ["v4", "serde"] }
+walkdir = "2.5"
+
+# Internal crates
+terminalos-ai = { path = "crates/ai" }
+terminalos-config = { path = "crates/config" }
+terminalos-core = { path = "crates/core" }
+terminalos-filesystem = { path = "crates/filesystem" }
+terminalos-git = { path = "crates/git" }
+terminalos-indexer = { path = "crates/indexer" }
+terminalos-memory = { path = "crates/memory" }
+terminalos-plugin = { path = "crates/plugin" }
+terminalos-protocol = { path = "crates/protocol" }
+terminalos-search = { path = "crates/search" }
+terminalos-shared = { path = "crates/shared" }
+terminalos-terminal = { path = "crates/terminal" }
+terminalos-ui = { path = "crates/ui" }
+terminalos-workspace = { path = "crates/workspace" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = 3
+
+[profile.dev]
+opt-level = 0
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }

@@ -1,0 +1,17 @@
+[package]
+name = "terminalos-filesystem"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Filesystem utilities for TerminalOS."
+
+[dependencies]
+ignore.workspace = true
+notify.workspace = true
+terminalos-shared.workspace = true
+tokio.workspace = true
+walkdir.workspace = true

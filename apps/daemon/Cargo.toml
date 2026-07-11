@@ -1,0 +1,23 @@
+[package]
+name = "terminalos-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Background daemon for TerminalOS."
+
+[[bin]]
+name = "terminalos-daemon"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+terminalos-protocol.workspace = true
+terminalos-shared.workspace = true
+terminalos-workspace.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "terminalos-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Core abstractions and application context for TerminalOS."
+
+[dependencies]
+terminalos-config.workspace = true
+terminalos-shared.workspace = true
+tokio.workspace = true
+tracing.workspace = true
