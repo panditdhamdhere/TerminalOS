@@ -16,6 +16,7 @@ use terminalos_config::ConfigLoader;
 use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
 use terminalos_memory::{ConversationRecord, MemoryStore};
+use terminalos_plugin::PluginManager;
 use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme, ThemeMode};
 use terminalos_terminal::{ShellManager, ShellSession, TerminalTab, key_event_to_bytes};
 use terminalos_workspace::{
@@ -154,6 +155,7 @@ impl TerminalApp {
             index_path,
             options.config.agent.clone(),
             options.config.search.clone(),
+            options.config.plugins.clone(),
         );
 
         let mut logs = vec![
@@ -164,6 +166,16 @@ impl TerminalApp {
             LogEntry::info("Git assistant ready — try /commit, /diff, /health"),
             LogEntry::info("Workspace session restore enabled"),
         ];
+
+        if options.config.plugins.enabled && options.config.plugins.auto_load {
+            let mut plugin_manager = PluginManager::new(PluginManager::default_dir());
+            if let Ok(count) = plugin_manager.load_all() {
+                let loaded = plugin_manager.loaded_count();
+                logs.push(LogEntry::info(format!(
+                    "Plugins loaded: {loaded}/{count} active"
+                )));
+            }
+        }
 
         if chat.has_providers() {
             logs.push(LogEntry::info(format!(

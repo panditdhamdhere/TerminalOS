@@ -17,6 +17,7 @@ terminalos-config.workspace = true
 terminalos-filesystem.workspace = true
 terminalos-git.workspace = true
 terminalos-indexer.workspace = true
+terminalos-plugin.workspace = true
 terminalos-search.workspace = true
 terminalos-shared.workspace = true
 tokio.workspace = true

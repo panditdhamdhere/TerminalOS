@@ -1,24 +1,66 @@
 /// Parsed slash command from chat input.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashCommand {
-    Edit { path: String, instruction: String },
-    Create { path: String, description: String },
-    Fix { path: String, instruction: String },
-    Refactor { path: String, instruction: String },
-    Explain { path: String, question: String },
-    Test { args: String },
-    Review { path: String },
-    Search { query: String },
-    Docs { path: String, focus: String },
+    Edit {
+        path: String,
+        instruction: String,
+    },
+    Create {
+        path: String,
+        description: String,
+    },
+    Fix {
+        path: String,
+        instruction: String,
+    },
+    Refactor {
+        path: String,
+        instruction: String,
+    },
+    Explain {
+        path: String,
+        question: String,
+    },
+    Test {
+        args: String,
+    },
+    Review {
+        path: String,
+    },
+    Search {
+        query: String,
+    },
+    Docs {
+        path: String,
+        focus: String,
+    },
     Analyze,
     Commit,
-    Pr { base: String },
-    Diff { path: Option<String> },
-    Conflict { path: Option<String> },
-    Stage { paths: Vec<String> },
-    Unstage { paths: Vec<String> },
-    Blame { path: String, line: Option<u32> },
+    Pr {
+        base: String,
+    },
+    Diff {
+        path: Option<String>,
+    },
+    Conflict {
+        path: Option<String>,
+    },
+    Stage {
+        paths: Vec<String>,
+    },
+    Unstage {
+        paths: Vec<String>,
+    },
+    Blame {
+        path: String,
+        line: Option<u32>,
+    },
     Health,
+    Plugin {
+        name: String,
+        command: String,
+        args: Vec<String>,
+    },
 }
 
 /// Parses `/command args` from chat input. Returns `None` for non-slash input.
@@ -128,8 +170,21 @@ pub fn parse_slash_command(input: &str) -> Option<SlashCommand> {
         }),
         "blame" => parse_blame(rest),
         "health" => Some(SlashCommand::Health),
+        "plugin" => parse_plugin(rest),
         _ => None,
     }
+}
+
+fn parse_plugin(input: &str) -> Option<SlashCommand> {
+    let mut parts = input.split_whitespace();
+    let name = parts.next()?.to_string();
+    let command = parts.next()?.to_string();
+    let args = parts.map(str::to_string).collect();
+    Some(SlashCommand::Plugin {
+        name,
+        command,
+        args,
+    })
 }
 
 fn split_paths(input: &str) -> Vec<String> {

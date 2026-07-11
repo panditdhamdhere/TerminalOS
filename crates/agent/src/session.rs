@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use terminalos_ai::{ChatEngine, ChatMessage, MessageRole};
-use terminalos_config::{AgentConfig, SearchConfig};
+use terminalos_config::{AgentConfig, PluginConfig, SearchConfig};
+use terminalos_plugin::PluginManager;
 use terminalos_shared::{Error, Result};
 use tokio::runtime::Runtime;
 
@@ -42,6 +43,7 @@ pub enum ConfirmedResult {
 pub struct AgentSession {
     executor: ToolExecutor,
     config: AgentConfig,
+    plugin_config: PluginConfig,
     pending: Option<PendingAction>,
     workspace_name: String,
     workspace_root: PathBuf,
@@ -54,6 +56,7 @@ impl AgentSession {
         index_path: PathBuf,
         config: AgentConfig,
         search_config: SearchConfig,
+        plugin_config: PluginConfig,
     ) -> Self {
         let workspace_name = workspace_root
             .file_name()
@@ -63,6 +66,7 @@ impl AgentSession {
         Self {
             executor: ToolExecutor::new(workspace_root.clone(), index_path, search_config),
             config,
+            plugin_config,
             workspace_name,
             pending: None,
             workspace_root,
@@ -124,6 +128,11 @@ impl AgentSession {
             SlashCommand::Unstage { paths } => self.git()?.handle_stage(&paths, true),
             SlashCommand::Blame { path, line } => self.git()?.handle_blame(&path, line),
             SlashCommand::Health => self.git()?.handle_health(),
+            SlashCommand::Plugin {
+                name,
+                command,
+                args,
+            } => self.handle_plugin(&name, &command, &args),
         }
     }
 
@@ -256,6 +265,19 @@ impl AgentSession {
             CommandMode::Refactor => refactor_prompt(path, &content, instruction),
         };
         Ok(AgentOutcome::RunAgentLoop(prompt))
+    }
+
+    fn handle_plugin(&self, name: &str, command: &str, args: &[String]) -> Result<AgentOutcome> {
+        if !self.plugin_config.enabled {
+            return Ok(AgentOutcome::Error(
+                "Plugins are disabled in config.".to_string(),
+            ));
+        }
+
+        let mut manager = PluginManager::new(PluginManager::default_dir());
+        manager.load_all()?;
+        let output = manager.execute(name, command, args)?;
+        Ok(AgentOutcome::Message(output))
     }
 }
 

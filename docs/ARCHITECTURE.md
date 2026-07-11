@@ -66,6 +66,10 @@ Keyboard and mouse events map to `AppAction` variants. The focused pane (`Focuse
 
 `ProjectIndexer` walks the filesystem (respecting `.gitignore`), indexes full files into Tantivy, and extracts tree-sitter code chunks into a SQLite vector store. `HybridSearchEngine` merges keyword and semantic scores. The CLI exposes `index` and `search` commands with `--mode hybrid|keyword|semantic`.
 
+### Plugin System
+
+Plugins export a stable C ABI (`terminalos_plugin_entry`) and ship with a `plugin.toml` manifest. `PluginManager` discovers installed plugins, loads dynamic libraries, and routes commands from the CLI and `/plugin` slash command. The bundled marketplace catalog supports local install of example plugins.
+
 ### Security
 
 AI-generated shell commands are never executed automatically. All destructive actions require explicit user confirmation (Phase 4+).

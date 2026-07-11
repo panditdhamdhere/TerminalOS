@@ -21,6 +21,7 @@ terminalos-config.workspace = true
 terminalos-core.workspace = true
 terminalos-filesystem.workspace = true
 terminalos-memory.workspace = true
+terminalos-plugin.workspace = true
 terminalos-shared.workspace = true
 terminalos-terminal.workspace = true
 terminalos-workspace.workspace = true

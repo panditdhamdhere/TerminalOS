@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use terminalos_config::ConfigLoader;
 use terminalos_git::GitRepository;
 use terminalos_indexer::{ProjectIndexer, hybrid_config_from_embedding, semantic_db_for_index};
+use terminalos_plugin::{PluginInstaller, PluginManager, PluginMarketplace};
 use terminalos_search::{
     EmbeddingConfig, HybridSearchEngine, SearchEngine, SearchMode, SearchQuery,
 };
@@ -68,6 +69,28 @@ enum Commands {
     },
     /// Print configuration path
     Config,
+    /// Manage plugins
+    Plugins {
+        #[command(subcommand)]
+        command: PluginCommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum PluginCommands {
+    /// List installed plugins
+    List,
+    /// Show marketplace catalog
+    Marketplace,
+    /// Install a plugin from the marketplace
+    Install { name: String },
+    /// Run a plugin command
+    Run {
+        plugin: String,
+        command: String,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 fn main() -> terminalos_shared::Result<()> {
@@ -166,6 +189,60 @@ fn main() -> terminalos_shared::Result<()> {
             let loader = ConfigLoader::default_paths();
             println!("{}", loader.config_file_path().display());
         }
+        Commands::Plugins { command } => match command {
+            PluginCommands::List => {
+                let mut manager = PluginManager::new(PluginManager::default_dir());
+                manager.load_all()?;
+                if manager.plugins().is_empty() {
+                    println!("No plugins installed.");
+                } else {
+                    for plugin in manager.plugins() {
+                        let status = if plugin.dynamic.is_some() {
+                            "loaded"
+                        } else {
+                            "manifest only"
+                        };
+                        println!(
+                            "{} v{} — {} [{status}]",
+                            plugin.info().name,
+                            plugin.info().version,
+                            plugin.info().description
+                        );
+                        for cmd in plugin.commands() {
+                            println!("  - {}: {}", cmd.name, cmd.description);
+                        }
+                    }
+                }
+            }
+            PluginCommands::Marketplace => {
+                let market = PluginMarketplace::bundled();
+                for entry in market.entries() {
+                    println!("{} v{} — {}", entry.name, entry.version, entry.description);
+                    println!("  author: {}", entry.author);
+                    println!("  commands: {}", entry.commands.join(", "));
+                }
+            }
+            PluginCommands::Install { name } => {
+                let market = PluginMarketplace::bundled();
+                let entry = market.find(&name).ok_or_else(|| {
+                    terminalos_shared::Error::Plugin(format!("unknown plugin: {name}"))
+                })?;
+                let installer = PluginInstaller::new(PluginManager::default_dir());
+                let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+                let install_dir = installer.install_from_source(entry, &repo_root)?;
+                println!("Installed {} to {}", entry.name, install_dir.display());
+            }
+            PluginCommands::Run {
+                plugin,
+                command,
+                args,
+            } => {
+                let mut manager = PluginManager::new(PluginManager::default_dir());
+                manager.load_all()?;
+                let output = manager.execute(&plugin, &command, &args)?;
+                println!("{output}");
+            }
+        },
     }
 
     Ok(())

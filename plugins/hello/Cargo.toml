@@ -1,0 +1,18 @@
+[package]
+name = "terminalos-plugin-hello"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Example hello plugin for TerminalOS."
+
+[lib]
+name = "terminalos_plugin_hello"
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json.workspace = true
+terminalos-plugin = { path = "../../crates/plugin" }

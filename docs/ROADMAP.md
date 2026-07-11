@@ -64,9 +64,9 @@
 
 ## Phase 8 — Plugin SDK
 
-- [ ] Rust plugin API
-- [ ] Dynamic loading
-- [ ] Plugin marketplace
+- [x] Rust plugin API
+- [x] Dynamic loading
+- [x] Plugin marketplace
 
 ## Phase 9 — Configuration
 

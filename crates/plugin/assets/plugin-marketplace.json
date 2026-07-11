@@ -1,0 +1,12 @@
+{
+  "plugins": [
+    {
+      "name": "hello",
+      "version": "0.1.0",
+      "description": "Greets the user with a customizable message",
+      "author": "TerminalOS",
+      "commands": ["greet", "version"],
+      "source": "plugins/hello"
+    }
+  ]
+}

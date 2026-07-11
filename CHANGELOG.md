@@ -2,6 +2,18 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.8.0] - 2026-07-11
+
+### Added
+
+- Stable C ABI plugin API with `terminalos_plugin_entry` export symbol
+- Dynamic plugin loading via `libloading` and `PluginManager`
+- Plugin marketplace catalog with install and list commands
+- Example `hello` dynamic plugin (`plugins/hello`)
+- `/plugin <name> <command> [args]` slash command in the coding agent
+- CLI `plugins list|marketplace|install|run` subcommands
+- `PluginConfig` in `config.toml` (`enabled`, `auto_load`)
+
 ## [0.7.0] - 2026-07-11
 
 ### Added

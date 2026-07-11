@@ -19,10 +19,11 @@ members = [
     "crates/terminal",
     "crates/ui",
     "crates/workspace",
+    "plugins/hello",
 ]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2024"
 license = "MIT"
 authors = ["Pandit Dhamdhere"]

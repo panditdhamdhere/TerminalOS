@@ -14,6 +14,8 @@ pub struct AppConfig {
     pub workspace: WorkspaceConfig,
     #[serde(default)]
     pub search: SearchConfig,
+    #[serde(default)]
+    pub plugins: PluginConfig,
 }
 
 impl Default for AppConfig {
@@ -26,6 +28,7 @@ impl Default for AppConfig {
             agent: AgentConfig::default(),
             workspace: WorkspaceConfig::default(),
             search: SearchConfig::default(),
+            plugins: PluginConfig::default(),
         }
     }
 }
@@ -214,6 +217,22 @@ impl Default for SearchConfig {
             embedding_base_url: "http://localhost:11434".to_string(),
             embedding_model: "nomic-embed-text".to_string(),
             embedding_api_key_env: "OLLAMA_API_KEY".to_string(),
+        }
+    }
+}
+
+/// Plugin system configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginConfig {
+    pub enabled: bool,
+    pub auto_load: bool,
+}
+
+impl Default for PluginConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            auto_load: true,
         }
     }
 }
