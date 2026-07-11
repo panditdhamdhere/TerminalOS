@@ -28,5 +28,9 @@ pub type CompletionStream = Pin<Box<dyn Stream<Item = Result<StreamChunk>> + Sen
 pub trait AiProvider: Send + Sync {
     fn name(&self) -> &str;
 
-    fn complete(&self, request: CompletionRequest) -> CompletionStream;
+    fn complete(
+        &self,
+        request: CompletionRequest,
+        handle: tokio::runtime::Handle,
+    ) -> CompletionStream;
 }

@@ -79,7 +79,7 @@ impl ChatEngine {
         !self.registry.is_empty()
     }
 
-    pub fn submit(&mut self, content: String) -> Result<()> {
+    pub fn submit(&mut self, content: String, handle: tokio::runtime::Handle) -> Result<()> {
         if content.trim().is_empty() {
             return Ok(());
         }
@@ -121,11 +121,11 @@ impl ChatEngine {
         };
 
         let mut stream: Pin<Box<dyn futures_util::Stream<Item = Result<StreamChunk>> + Send>> =
-            provider.complete(request);
+            provider.complete(request, handle.clone());
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
-        tokio::spawn(async move {
+        handle.spawn(async move {
             while let Some(chunk) = stream.next().await {
                 if tx.send(chunk).is_err() {
                     break;
@@ -235,7 +235,7 @@ impl ChatEngine {
             max_tokens: Some(8192),
         };
 
-        let mut stream = provider.complete(request);
+        let mut stream = provider.complete(request, runtime.handle().clone());
         runtime.block_on(async {
             let mut content = String::new();
             while let Some(chunk) = stream.next().await {

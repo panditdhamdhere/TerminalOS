@@ -571,7 +571,10 @@ impl TerminalApp {
             return;
         }
 
-        match self.chat.submit(content.clone()) {
+        match self
+            .chat
+            .submit(content.clone(), self.runtime.handle().clone())
+        {
             Ok(()) => {
                 self.push_log(LogLevel::Info, "Chat message sent");
                 self.persist_message(terminalos_ai::MessageRole::User, content);
@@ -593,7 +596,7 @@ impl TerminalApp {
                 self.persist_message(terminalos_ai::MessageRole::Assistant, message);
             }
             Ok(AgentOutcome::StartChat(prompt)) => {
-                if let Err(e) = self.chat.submit(prompt) {
+                if let Err(e) = self.chat.submit(prompt, self.runtime.handle().clone()) {
                     self.push_log(LogLevel::Error, format!("Agent chat error: {e}"));
                 }
             }

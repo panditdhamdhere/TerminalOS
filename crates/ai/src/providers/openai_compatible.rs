@@ -33,7 +33,11 @@ impl crate::provider::AiProvider for OpenAiCompatibleProvider {
         &self.name
     }
 
-    fn complete(&self, request: CompletionRequest) -> CompletionStream {
+    fn complete(
+        &self,
+        request: CompletionRequest,
+        handle: tokio::runtime::Handle,
+    ) -> CompletionStream {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let client = self.client.clone();
         let base_url = self.base_url.clone();
@@ -44,7 +48,7 @@ impl crate::provider::AiProvider for OpenAiCompatibleProvider {
             request.model.clone()
         };
 
-        tokio::spawn(async move {
+        handle.spawn(async move {
             if let Err(e) = run_openai_stream(
                 &client,
                 &base_url,
