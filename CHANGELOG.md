@@ -2,6 +2,18 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.7.0] - 2026-07-11
+
+### Added
+
+- Tree-sitter code chunk extraction for Rust, Python, JavaScript/TypeScript, and Go
+- Ollama embedding client for semantic vector indexing
+- SQLite vector store (`semantic.db`) with cosine similarity search
+- Hybrid search engine combining Tantivy keyword and semantic scores
+- `SearchConfig` in `config.toml` (`mode`, weights, embedding model/base URL)
+- CLI `--mode hybrid|keyword|semantic` flag for search queries
+- `/search` slash command now returns symbol, line, and match type metadata
+
 ## [0.6.0] - 2026-07-11
 
 ### Added

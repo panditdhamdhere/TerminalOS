@@ -2,10 +2,13 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 use serde_json::Value;
+use terminalos_config::SearchConfig;
 use terminalos_filesystem::FileOps;
 use terminalos_git::GitRepository;
-use terminalos_indexer::ProjectIndexer;
-use terminalos_search::{SearchEngine, SearchQuery};
+use terminalos_indexer::{ProjectIndexer, semantic_db_for_index};
+use terminalos_search::{
+    EmbeddingConfig, HybridSearchConfig, HybridSearchEngine, SearchMode, SearchQuery,
+};
 use terminalos_shared::{Error, Result};
 
 use crate::action::PendingAction;
@@ -36,13 +39,17 @@ pub enum ToolResult {
 pub struct ToolExecutor {
     file_ops: FileOps,
     index_path: PathBuf,
+    semantic_db: PathBuf,
+    search_config: HybridSearchConfig,
 }
 
 impl ToolExecutor {
     #[must_use]
-    pub fn new(workspace_root: PathBuf, index_path: PathBuf) -> Self {
+    pub fn new(workspace_root: PathBuf, index_path: PathBuf, search_config: SearchConfig) -> Self {
         Self {
             file_ops: FileOps::new(workspace_root),
+            semantic_db: semantic_db_for_index(&index_path),
+            search_config: hybrid_config_from_search(search_config),
             index_path,
         }
     }
@@ -96,7 +103,22 @@ impl ToolExecutor {
                 }
                 let mut out = format!("Search results for '{query}':\n");
                 for hit in hits {
-                    out.push_str(&format!("\n- {} (score {:.2})\n", hit.path, hit.score));
+                    let location = match (hit.symbol.as_deref(), hit.start_line) {
+                        (Some(symbol), Some(line)) => format!("{symbol}:{line}"),
+                        (_, Some(line)) => format!("line {line}"),
+                        _ => String::new(),
+                    };
+                    let label = if location.is_empty() {
+                        hit.path.clone()
+                    } else {
+                        format!("{} ({location})", hit.path)
+                    };
+                    out.push_str(&format!(
+                        "\n- {} [{:?}] (score {:.2})\n",
+                        label,
+                        hit.match_type.as_deref().unwrap_or("keyword"),
+                        hit.score
+                    ));
                     let snippet: String = hit.content.chars().take(200).collect();
                     out.push_str(&snippet);
                     if hit.content.len() > 200 {
@@ -171,18 +193,30 @@ impl ToolExecutor {
 
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<terminalos_search::SearchHit>> {
         self.ensure_index()?;
-        let engine = SearchEngine::open(&self.index_path)?;
-        engine.search(&SearchQuery {
+        let runtime =
+            tokio::runtime::Runtime::new().map_err(|e| Error::Ai(format!("tokio runtime: {e}")))?;
+        let engine = HybridSearchEngine::new(
+            &self.index_path,
+            &self.semantic_db,
+            self.search_config.clone(),
+        );
+        runtime.block_on(engine.search(&SearchQuery {
             text: query.to_string(),
             limit,
-        })
+        }))
     }
 
     pub fn ensure_index(&self) -> Result<()> {
         if self.index_path.join("meta.json").exists() {
             return Ok(());
         }
-        let indexer = ProjectIndexer::new(self.file_ops.root(), &self.index_path);
+        let embedding = EmbeddingConfig {
+            base_url: self.search_config.embedding.base_url.clone(),
+            model: self.search_config.embedding.model.clone(),
+            api_key_env: self.search_config.embedding.api_key_env.clone(),
+        };
+        let indexer = ProjectIndexer::new(self.file_ops.root(), &self.index_path)
+            .with_embedding_config(embedding);
         let _ = indexer.index_all()?;
         Ok(())
     }
@@ -203,6 +237,23 @@ impl ToolExecutor {
             },
             Err(e) => format!("not a git repo: {e}"),
         }
+    }
+}
+
+fn hybrid_config_from_search(config: SearchConfig) -> HybridSearchConfig {
+    HybridSearchConfig {
+        mode: match config.mode {
+            terminalos_config::SearchMode::Hybrid => SearchMode::Hybrid,
+            terminalos_config::SearchMode::Keyword => SearchMode::Keyword,
+            terminalos_config::SearchMode::Semantic => SearchMode::Semantic,
+        },
+        keyword_weight: config.keyword_weight,
+        semantic_weight: config.semantic_weight,
+        embedding: EmbeddingConfig {
+            base_url: config.embedding_base_url,
+            model: config.embedding_model,
+            api_key_env: config.embedding_api_key_env,
+        },
     }
 }
 

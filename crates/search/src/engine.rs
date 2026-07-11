@@ -20,6 +20,16 @@ pub struct SearchHit {
     pub path: String,
     pub content: String,
     pub score: f32,
+    #[serde(default)]
+    pub symbol: Option<String>,
+    #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub start_line: Option<u32>,
+    #[serde(default)]
+    pub end_line: Option<u32>,
+    #[serde(default)]
+    pub match_type: Option<String>,
 }
 
 /// Tantivy-backed full-text search engine.
@@ -115,6 +125,11 @@ impl SearchEngine {
                 path,
                 content,
                 score,
+                symbol: None,
+                kind: None,
+                start_line: None,
+                end_line: None,
+                match_type: None,
             });
         }
 

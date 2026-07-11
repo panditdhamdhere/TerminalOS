@@ -14,4 +14,5 @@ ignore.workspace = true
 rayon.workspace = true
 terminalos-search.workspace = true
 terminalos-shared.workspace = true
+tokio.workspace = true
 walkdir.workspace = true

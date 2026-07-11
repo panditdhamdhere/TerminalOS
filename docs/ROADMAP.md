@@ -58,9 +58,9 @@
 
 ## Phase 7 — Semantic Search
 
-- [ ] Tree-sitter parsing
-- [ ] Embeddings and vector search
-- [ ] Hybrid keyword + semantic search
+- [x] Tree-sitter parsing
+- [x] Embeddings and vector search
+- [x] Hybrid keyword + semantic search
 
 ## Phase 8 — Plugin SDK
 

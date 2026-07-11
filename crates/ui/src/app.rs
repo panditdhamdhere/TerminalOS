@@ -153,6 +153,7 @@ impl TerminalApp {
             workspace_root.clone(),
             index_path,
             options.config.agent.clone(),
+            options.config.search.clone(),
         );
 
         let mut logs = vec![

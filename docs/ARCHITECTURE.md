@@ -64,7 +64,7 @@ Keyboard and mouse events map to `AppAction` variants. The focused pane (`Focuse
 
 ### Search Pipeline
 
-`ProjectIndexer` walks the filesystem (respecting `.gitignore`) and feeds documents into `SearchEngine` (Tantivy). The CLI exposes `index` and `search` commands.
+`ProjectIndexer` walks the filesystem (respecting `.gitignore`), indexes full files into Tantivy, and extracts tree-sitter code chunks into a SQLite vector store. `HybridSearchEngine` merges keyword and semantic scores. The CLI exposes `index` and `search` commands with `--mode hybrid|keyword|semantic`.
 
 ### Security
 

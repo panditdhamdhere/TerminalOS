@@ -6,7 +6,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1–6)
+## Features (Phase 1–7)
 
 - **Real shell** — PTY-backed bash/zsh with streaming output
 - **ANSI colors** — full vt100 terminal emulation in the UI
@@ -22,6 +22,8 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Git assistant** — commit messages, PR summaries, diff explain, blame, staging, health checks
 - **Workspace manager** — persist tabs, branches, UI layout, and env vars across sessions
 - **Session restore** — reopen projects with terminal tabs and pane focus restored automatically
+- **Semantic search** — tree-sitter chunking with Ollama embeddings and hybrid ranking
+- **Code-aware results** — search hits include symbol names and line ranges
 
 ## Quick Start
 
@@ -64,6 +66,9 @@ cargo run -p terminalos-cli -- search "TerminalApp"
 
 # List recently opened workspaces
 cargo run -p terminalos-cli -- workspaces
+
+# Hybrid semantic + keyword search
+cargo run -p terminalos-cli -- search "session restore" --mode hybrid
 ```
 
 ### Coding Agent (Slash Commands)

@@ -12,6 +12,8 @@ pub struct AppConfig {
     pub agent: AgentConfig,
     #[serde(default)]
     pub workspace: WorkspaceConfig,
+    #[serde(default)]
+    pub search: SearchConfig,
 }
 
 impl Default for AppConfig {
@@ -23,6 +25,7 @@ impl Default for AppConfig {
             default_provider: Some("ollama".to_string()),
             agent: AgentConfig::default(),
             workspace: WorkspaceConfig::default(),
+            search: SearchConfig::default(),
         }
     }
 }
@@ -177,6 +180,40 @@ impl Default for WorkspaceConfig {
         Self {
             auto_restore: true,
             autosave_secs: 30,
+        }
+    }
+}
+
+/// Semantic and hybrid search configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchConfig {
+    pub mode: SearchMode,
+    pub keyword_weight: f32,
+    pub semantic_weight: f32,
+    pub embedding_base_url: String,
+    pub embedding_model: String,
+    pub embedding_api_key_env: String,
+}
+
+/// Search mode for keyword, semantic, or hybrid queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchMode {
+    #[default]
+    Hybrid,
+    Keyword,
+    Semantic,
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self {
+            mode: SearchMode::Hybrid,
+            keyword_weight: 0.4,
+            semantic_weight: 0.6,
+            embedding_base_url: "http://localhost:11434".to_string(),
+            embedding_model: "nomic-embed-text".to_string(),
+            embedding_api_key_env: "OLLAMA_API_KEY".to_string(),
         }
     }
 }

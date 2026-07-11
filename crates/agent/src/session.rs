@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use terminalos_ai::{ChatEngine, ChatMessage, MessageRole};
-use terminalos_config::AgentConfig;
+use terminalos_config::{AgentConfig, SearchConfig};
 use terminalos_shared::{Error, Result};
 use tokio::runtime::Runtime;
 
@@ -49,14 +49,19 @@ pub struct AgentSession {
 
 impl AgentSession {
     #[must_use]
-    pub fn new(workspace_root: PathBuf, index_path: PathBuf, config: AgentConfig) -> Self {
+    pub fn new(
+        workspace_root: PathBuf,
+        index_path: PathBuf,
+        config: AgentConfig,
+        search_config: SearchConfig,
+    ) -> Self {
         let workspace_name = workspace_root
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "workspace".to_string());
 
         Self {
-            executor: ToolExecutor::new(workspace_root.clone(), index_path),
+            executor: ToolExecutor::new(workspace_root.clone(), index_path, search_config),
             config,
             workspace_name,
             pending: None,
@@ -200,7 +205,22 @@ impl AgentSession {
         }
         let mut out = format!("**Search results for** `{query}`:\n\n");
         for hit in hits {
-            out.push_str(&format!("- `{}` (score {:.2})\n", hit.path, hit.score));
+            let location = match (hit.symbol.as_deref(), hit.start_line) {
+                (Some(symbol), Some(line)) => format!("`{symbol}`:{line}"),
+                (_, Some(line)) => format!("line {line}"),
+                _ => String::new(),
+            };
+            let label = if location.is_empty() {
+                format!("`{}`", hit.path)
+            } else {
+                format!("`{}` ({location})", hit.path)
+            };
+            out.push_str(&format!(
+                "- {} [{:?}] (score {:.2})\n",
+                label,
+                hit.match_type.as_deref().unwrap_or("keyword"),
+                hit.score
+            ));
         }
         Ok(AgentOutcome::Message(out))
     }

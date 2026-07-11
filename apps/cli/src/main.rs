@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use terminalos_config::ConfigLoader;
 use terminalos_git::GitRepository;
-use terminalos_indexer::ProjectIndexer;
-use terminalos_search::{SearchEngine, SearchQuery};
+use terminalos_indexer::{ProjectIndexer, hybrid_config_from_embedding, semantic_db_for_index};
+use terminalos_search::{
+    EmbeddingConfig, HybridSearchEngine, SearchEngine, SearchMode, SearchQuery,
+};
 use terminalos_workspace::{WorkspaceManager, WorkspaceStore};
 use tokio::runtime::Runtime;
 
@@ -16,6 +18,23 @@ struct Cli {
     command: Commands,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum CliSearchMode {
+    Hybrid,
+    Keyword,
+    Semantic,
+}
+
+impl From<CliSearchMode> for SearchMode {
+    fn from(value: CliSearchMode) -> Self {
+        match value {
+            CliSearchMode::Hybrid => Self::Hybrid,
+            CliSearchMode::Keyword => Self::Keyword,
+            CliSearchMode::Semantic => Self::Semantic,
+        }
+    }
+}
+
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Show git repository status
@@ -23,7 +42,7 @@ enum Commands {
         #[arg(short, long, default_value = ".")]
         path: PathBuf,
     },
-    /// Index a project for search
+    /// Index a project for keyword and semantic search
     Index {
         #[arg(short, long, default_value = ".")]
         path: PathBuf,
@@ -37,6 +56,8 @@ enum Commands {
         index: PathBuf,
         #[arg(short, long, default_value = "10")]
         limit: usize,
+        #[arg(long, value_enum, default_value = "hybrid")]
+        mode: CliSearchMode,
     },
     /// Open a workspace
     Open { path: PathBuf },
@@ -51,6 +72,7 @@ enum Commands {
 
 fn main() -> terminalos_shared::Result<()> {
     let cli = Cli::parse();
+    let config = ConfigLoader::default_paths().load().unwrap_or_default();
 
     match cli.command {
         Commands::Status { path } => {
@@ -66,27 +88,43 @@ fn main() -> terminalos_shared::Result<()> {
             println!("Clean: {}", status.is_clean);
         }
         Commands::Index { path, index } => {
-            let indexer = ProjectIndexer::new(&path, &index);
+            let embedding = EmbeddingConfig {
+                base_url: config.search.embedding_base_url.clone(),
+                model: config.search.embedding_model.clone(),
+                api_key_env: config.search.embedding_api_key_env.clone(),
+            };
+            let indexer = ProjectIndexer::new(&path, &index).with_embedding_config(embedding);
             let stats = indexer.index_all()?;
             println!(
-                "Indexed {} files ({} bytes)",
-                stats.files_indexed, stats.bytes_indexed
+                "Indexed {} files ({} bytes, {} semantic chunks)",
+                stats.files_indexed, stats.bytes_indexed, stats.semantic_chunks
             );
         }
         Commands::Search {
             query,
             index,
             limit,
+            mode,
         } => {
-            let engine = SearchEngine::open(&index)?;
-            let hits = engine.search(&SearchQuery { text: query, limit })?;
-            for hit in hits {
-                println!(
-                    "[{:.2}] {} — {}",
-                    hit.score,
-                    hit.path,
-                    truncate(&hit.content, 80)
-                );
+            if mode == CliSearchMode::Keyword {
+                let engine = SearchEngine::open(&index)?;
+                let hits = engine.search(&SearchQuery { text: query, limit })?;
+                print_hits(&hits);
+            } else {
+                let mut hybrid = hybrid_config_from_embedding(EmbeddingConfig {
+                    base_url: config.search.embedding_base_url,
+                    model: config.search.embedding_model,
+                    api_key_env: config.search.embedding_api_key_env,
+                });
+                hybrid.mode = mode.into();
+                hybrid.keyword_weight = config.search.keyword_weight;
+                hybrid.semantic_weight = config.search.semantic_weight;
+
+                let runtime = Runtime::new()
+                    .map_err(|e| terminalos_shared::Error::Ui(format!("tokio runtime: {e}")))?;
+                let engine = HybridSearchEngine::new(&index, semantic_db_for_index(&index), hybrid);
+                let hits = runtime.block_on(engine.search(&SearchQuery { text: query, limit }))?;
+                print_hits(&hits);
             }
         }
         Commands::Open { path } => {
@@ -131,6 +169,27 @@ fn main() -> terminalos_shared::Result<()> {
     }
 
     Ok(())
+}
+
+fn print_hits(hits: &[terminalos_search::SearchHit]) {
+    for hit in hits {
+        let location = match (hit.symbol.as_deref(), hit.start_line) {
+            (Some(symbol), Some(line)) => format!("{symbol}:{line}"),
+            (_, Some(line)) => format!("line {line}"),
+            _ => String::new(),
+        };
+        let label = if location.is_empty() {
+            hit.path.clone()
+        } else {
+            format!("{location} in {}", hit.path)
+        };
+        println!(
+            "[{:.2}] {} — {}",
+            hit.score,
+            label,
+            truncate(&hit.content, 80)
+        );
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {
