@@ -73,10 +73,10 @@
 - [x] Profiles, themes, keybindings
 - [x] Provider and workspace configs
 
-## Phase 10 — Developer Experience
+## Phase 10 — Developer Experience ✅
 
-- [ ] Cargo xtask
-- [ ] CI/CD (GitHub Actions)
-- [ ] Snapshot tests
-- [ ] Benchmarks
-- [ ] Full documentation site
+- [x] Cargo xtask
+- [x] CI/CD (GitHub Actions)
+- [x] Snapshot tests
+- [x] Benchmarks
+- [x] Full documentation site

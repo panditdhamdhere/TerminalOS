@@ -6,7 +6,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1–9)
+## Features (Phase 1–10)
 
 - **Real shell** — PTY-backed bash/zsh with streaming output
 - **ANSI colors** — full vt100 terminal emulation in the UI
@@ -28,6 +28,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Profiles** — `default`, `minimal`, and `coding` layouts with per-profile UI overrides
 - **Theme presets** — dracula, nord, solarized-dark, and built-in dark/light themes
 - **Keybindings** — configurable global shortcuts via `config.toml` or `keybindings.toml`
+- **Developer tooling** — `cargo xtask` for CI, snapshots, benchmarks, and docs
 
 ## Quick Start
 
@@ -161,6 +162,17 @@ Default config directory: `~/.config/terminalos/`
 | `profiles/*.toml` | Named profiles with partial UI/layout overrides |
 
 Set `theme_preset = "dracula"` under `[ui]` for named color palettes.
+
+### Developer Tools
+
+```bash
+cargo xtask ci          # local CI pipeline
+cargo xtask snapshot    # verify UI/config snapshots
+cargo xtask bench       # run benchmarks
+cargo xtask docs        # build documentation site
+```
+
+Documentation site source lives in `docs/src/`. Build output is written to `docs/book/`.
 
 ## Architecture
 

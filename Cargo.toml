@@ -20,10 +20,11 @@ members = [
     "crates/ui",
     "crates/workspace",
     "plugins/hello",
+    "xtask",
 ]
 
 [workspace.package]
-version = "0.9.0"
+version = "0.10.0"
 edition = "2024"
 license = "MIT"
 authors = ["Pandit Dhamdhere"]
@@ -62,6 +63,8 @@ arboard = "3.4"
 pulldown-cmark = "0.12"
 syntect = "5.2"
 bytes = "1.9"
+criterion = "0.5"
+insta = "1.41"
 tokio-stream = "0.1"
 
 # Internal crates

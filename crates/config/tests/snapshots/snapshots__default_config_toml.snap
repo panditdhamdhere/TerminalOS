@@ -1,0 +1,104 @@
+---
+source: crates/config/tests/snapshots.rs
+expression: toml
+---
+default_provider = "ollama"
+active_profile = "default"
+
+[ui]
+theme = "dark"
+show_sidebar = true
+show_chat = true
+show_logs = true
+animations = true
+mouse_enabled = true
+
+[layout]
+sidebar_width_percent = 20
+chat_width_percent = 30
+logs_height_percent = 15
+status_bar_height = 1
+
+[[providers]]
+name = "ollama"
+provider_type = "ollama"
+api_key_env = "OLLAMA_API_KEY"
+base_url = "http://localhost:11434/v1"
+model = "llama3.2"
+enabled = true
+
+[[providers]]
+name = "openai"
+provider_type = "open_ai"
+api_key_env = "OPENAI_API_KEY"
+model = "gpt-4o"
+enabled = false
+
+[[providers]]
+name = "anthropic"
+provider_type = "anthropic"
+api_key_env = "ANTHROPIC_API_KEY"
+model = "claude-sonnet-4-20250514"
+enabled = false
+
+[[providers]]
+name = "openrouter"
+provider_type = "open_router"
+api_key_env = "OPENROUTER_API_KEY"
+model = "anthropic/claude-sonnet-4"
+enabled = false
+
+[[providers]]
+name = "gemini"
+provider_type = "gemini"
+api_key_env = "GEMINI_API_KEY"
+model = "gemini-2.0-flash"
+enabled = false
+
+[[providers]]
+name = "deepseek"
+provider_type = "deep_seek"
+api_key_env = "DEEPSEEK_API_KEY"
+model = "deepseek-chat"
+enabled = false
+
+[keybindings]
+new_tab = "Ctrl+T"
+close_tab = "Ctrl+W"
+next_tab = "Ctrl+Tab"
+prev_tab = "Ctrl+Shift+Tab"
+toggle_sidebar = "Ctrl+B"
+toggle_chat = "Ctrl+/"
+toggle_logs = "Ctrl+`"
+focus_terminal = "Ctrl+1"
+focus_chat = "Ctrl+2"
+focus_sidebar = "Ctrl+3"
+focus_logs = "Ctrl+4"
+quit = "Ctrl+Q"
+resize_sidebar_increase = "Ctrl+Right"
+resize_sidebar_decrease = "Ctrl+Left"
+resize_chat_increase = "Ctrl+Up"
+resize_chat_decrease = "Ctrl+Down"
+resize_logs_increase = "Ctrl+Shift+Up"
+resize_logs_decrease = "Ctrl+Shift+Down"
+
+[agent]
+max_iterations = 8
+require_confirm_write = true
+require_confirm_shell = true
+
+[workspace]
+auto_restore = true
+autosave_secs = 30
+
+[search]
+mode = "hybrid"
+keyword_weight = 0.4000000059604645
+semantic_weight = 0.6000000238418579
+embedding_base_url = "http://localhost:11434"
+embedding_model = "nomic-embed-text"
+embedding_api_key_env = "OLLAMA_API_KEY"
+
+[plugins]
+enabled = true
+auto_load = true

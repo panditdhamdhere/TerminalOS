@@ -1,0 +1,9 @@
+---
+source: crates/config/tests/snapshots.rs
+expression: "format!(\"name={}\\nmode={:?}\\nbackground={}\\nforeground={}\\naccent={}\",\ntheme.name, theme.mode, theme.background, theme.foreground, theme.accent)"
+---
+name=Dracula
+mode=Dark
+background=#282a36
+foreground=#f8f8f2
+accent=#bd93f9

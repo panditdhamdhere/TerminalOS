@@ -1,6 +1,4 @@
-# TerminalOS Architecture
-
-## Overview
+# Architecture
 
 TerminalOS is a modular Rust workspace following clean architecture principles. Each crate has a single responsibility and communicates through well-defined traits and shared types.
 
@@ -27,10 +25,8 @@ terminalos/
 │   ├── indexer/      # Project file indexer
 │   ├── plugin/       # Plugin SDK
 │   └── ui/           # Ratatui components + event loop
-├── xtask/            # Developer automation (cargo xtask)
+├── xtask/            # Developer automation tasks
 ├── docs/
-│   ├── src/          # mdBook documentation source
-│   └── book/         # Built site output (gitignored)
 └── .github/
 ```
 
@@ -66,11 +62,11 @@ Keyboard and mouse events map to `AppAction` variants. The focused pane (`Focuse
 
 ### Search Pipeline
 
-`ProjectIndexer` walks the filesystem (respecting `.gitignore`), indexes full files into Tantivy, and extracts tree-sitter code chunks into a SQLite vector store. `HybridSearchEngine` merges keyword and semantic scores. The CLI exposes `index` and `search` commands with `--mode hybrid|keyword|semantic`.
+`ProjectIndexer` walks the filesystem (respecting `.gitignore`), indexes full files into Tantivy, and extracts tree-sitter code chunks into a SQLite vector store. `HybridSearchEngine` merges keyword and semantic scores.
 
 ### Plugin System
 
-Plugins export a stable C ABI (`terminalos_plugin_entry`) and ship with a `plugin.toml` manifest. `PluginManager` discovers installed plugins, loads dynamic libraries, and routes commands from the CLI and `/plugin` slash command. The bundled marketplace catalog supports local install of example plugins.
+Plugins export a stable C ABI (`terminalos_plugin_entry`) and ship with a `plugin.toml` manifest. `PluginManager` discovers installed plugins, loads dynamic libraries, and routes commands from the CLI and `/plugin` slash command.
 
 ### Configuration
 
@@ -78,13 +74,13 @@ Configuration lives in `~/.config/terminalos/`:
 
 - `config.toml` — active profile, providers, workspace, and inline keybindings
 - `keybindings.toml` — optional override for global shortcuts
-- `profiles/` — named profiles (`default`, `minimal`, `coding`) with partial section overrides
+- `profiles/` — named profiles with partial section overrides
 
-`ConfigLoader` merges the base config, keybindings override, and active profile at startup. Theme presets (`dracula`, `nord`, `solarized-dark`) resolve through `resolve_theme()`. The UI reads shortcuts from `KeybindingResolver` instead of hardcoded bindings.
+`ConfigLoader` merges the base config, keybindings override, and active profile at startup.
 
 ### Security
 
-AI-generated shell commands are never executed automatically. All destructive actions require explicit user confirmation (Phase 4+).
+AI-generated shell commands are never executed automatically. All destructive actions require explicit user confirmation.
 
 ## Cross-Platform
 
@@ -92,10 +88,3 @@ AI-generated shell commands are never executed automatically. All destructive ac
 - **Git**: git2 (libgit2 bindings)
 - **Async runtime**: Tokio
 - **Database**: SQLx + SQLite
-
-## Performance Targets
-
-- Startup: < 100ms (release build)
-- Incremental indexing with background workers
-- Lazy file tree loading (depth-limited)
-- Bounded log and buffer sizes

@@ -30,4 +30,6 @@ tracing.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
 ratatui = { workspace = true, features = ["crossterm", "serde"] }
+terminalos-terminal.workspace = true

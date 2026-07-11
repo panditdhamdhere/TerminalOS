@@ -1,0 +1,13 @@
+---
+source: crates/ui/tests/snapshots.rs
+expression: "format_layout(area, &config, &visibility)"
+---
+root: (0,0 120x40)
+status_bar: (0,39 120x1)
+main_row: (0,0 120x39)
+center_column: (24,0 60x39)
+tab_bar: (24,0 60x1)
+terminal: (24,1 60x33)
+sidebar: (0,0 24x39)
+chat: (84,0 36x39)
+logs: (24,34 60x5)

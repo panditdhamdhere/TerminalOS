@@ -6,9 +6,21 @@ Thank you for your interest in contributing to TerminalOS.
 
 1. Install Rust stable (1.85+)
 2. Clone the repository
-3. Build the workspace: `cargo build`
-4. Run tests: `cargo test --workspace`
-5. Run clippy: `cargo clippy --workspace --all-targets -- -D warnings`
+3. Install git hooks: `cargo xtask hooks`
+4. Build the workspace: `cargo build`
+5. Run the full CI pipeline locally: `cargo xtask ci`
+
+## xtask Commands
+
+```bash
+cargo xtask ci          # fmt check, clippy, tests, snapshots
+cargo xtask fmt         # format all crates
+cargo xtask test        # run workspace tests
+cargo xtask snapshot    # verify snapshot tests
+cargo xtask snapshot --update  # refresh snapshots after intentional changes
+cargo xtask bench       # run criterion benchmarks
+cargo xtask docs        # build mdBook site (requires: cargo install mdbook)
+```
 
 ## Code Standards
 

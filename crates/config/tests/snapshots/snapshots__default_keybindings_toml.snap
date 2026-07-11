@@ -1,0 +1,22 @@
+---
+source: crates/config/tests/snapshots.rs
+expression: toml
+---
+new_tab = "Ctrl+T"
+close_tab = "Ctrl+W"
+next_tab = "Ctrl+Tab"
+prev_tab = "Ctrl+Shift+Tab"
+toggle_sidebar = "Ctrl+B"
+toggle_chat = "Ctrl+/"
+toggle_logs = "Ctrl+`"
+focus_terminal = "Ctrl+1"
+focus_chat = "Ctrl+2"
+focus_sidebar = "Ctrl+3"
+focus_logs = "Ctrl+4"
+quit = "Ctrl+Q"
+resize_sidebar_increase = "Ctrl+Right"
+resize_sidebar_decrease = "Ctrl+Left"
+resize_chat_increase = "Ctrl+Up"
+resize_chat_decrease = "Ctrl+Down"
+resize_logs_increase = "Ctrl+Shift+Up"
+resize_logs_decrease = "Ctrl+Shift+Down"

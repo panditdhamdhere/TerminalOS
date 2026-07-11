@@ -25,5 +25,10 @@ tree-sitter-rust = "0.23"
 uuid.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 tempfile = "3.14"
 tokio.workspace = true
+
+[[bench]]
+name = "search"
+harness = false

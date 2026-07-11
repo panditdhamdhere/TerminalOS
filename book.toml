@@ -1,0 +1,13 @@
+[book]
+title = "TerminalOS"
+authors = ["Pandit Dhamdhere"]
+description = "The AI-native terminal for developers"
+language = "en"
+src = "docs/src"
+
+[build]
+build-dir = "docs/book"
+
+[output.html]
+git-repository-url = "https://github.com/panditdhamdhere/WarpShell"
+edit-url-template = "https://github.com/panditdhamdhere/WarpShell/edit/main/{path}"

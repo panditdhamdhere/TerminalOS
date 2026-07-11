@@ -1,0 +1,22 @@
+---
+source: crates/config/tests/snapshots.rs
+expression: "lines.join(\"\\n\")"
+---
+close_tab=Ctrl+W
+focus_chat=Ctrl+2
+focus_logs=Ctrl+4
+focus_sidebar=Ctrl+3
+focus_terminal=Ctrl+1
+new_tab=Ctrl+T
+next_tab=Ctrl+Tab
+prev_tab=Ctrl+Shift+Tab
+quit=Ctrl+Q
+resize_chat_decrease=Ctrl+Down
+resize_chat_increase=Ctrl+Up
+resize_logs_decrease=Ctrl+Shift+Down
+resize_logs_increase=Ctrl+Shift+Up
+resize_sidebar_decrease=Ctrl+Left
+resize_sidebar_increase=Ctrl+Right
+toggle_chat=Ctrl+/
+toggle_logs=Ctrl+`
+toggle_sidebar=Ctrl+B

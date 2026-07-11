@@ -11,7 +11,7 @@ env:
   RUSTFLAGS: "-D warnings"
 
 jobs:
-  build:
+  check:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -25,14 +25,37 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+      - name: CI checks (fmt, clippy, test, snapshots)
+        run: cargo xtask ci
 
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Build
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
         run: cargo build --workspace --release
 
-      - name: Test
-        run: cargo test --workspace
+      - name: Run benchmarks
+        run: cargo bench --workspace -- --test
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        run: cargo install mdbook --locked
+
+      - name: Build documentation site
+        run: cargo xtask docs
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdbook-site
+          path: docs/book

@@ -1,0 +1,9 @@
+---
+source: crates/config/tests/snapshots.rs
+expression: "builtin_preset_names().join(\"\\n\")"
+---
+dark
+light
+dracula
+nord
+solarized-dark

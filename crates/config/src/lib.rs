@@ -7,7 +7,7 @@ pub mod profiles;
 pub mod settings;
 pub mod themes;
 
-pub use keybinding::{GlobalAction, KeybindingResolver, ParsedKey, parse_key_combo};
+pub use keybinding::{GlobalAction, KeybindingResolver, ParsedKey, binding_map, parse_key_combo};
 pub use keybindings::Keybindings;
 pub use loader::ConfigLoader;
 pub use profiles::{Profile, apply_profile, ensure_default_profiles, list_profiles, load_profile};

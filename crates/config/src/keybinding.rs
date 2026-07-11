@@ -123,6 +123,49 @@ fn add_binding(entries: &mut Vec<(ParsedKey, GlobalAction)>, binding: &str, acti
     }
 }
 
+/// Returns configured binding strings paired with action labels.
+#[must_use]
+pub fn binding_map(bindings: &Keybindings) -> Vec<(&'static str, String)> {
+    vec![
+        ("quit", bindings.quit.clone()),
+        ("new_tab", bindings.new_tab.clone()),
+        ("close_tab", bindings.close_tab.clone()),
+        ("next_tab", bindings.next_tab.clone()),
+        ("prev_tab", bindings.prev_tab.clone()),
+        ("toggle_sidebar", bindings.toggle_sidebar.clone()),
+        ("toggle_chat", bindings.toggle_chat.clone()),
+        ("toggle_logs", bindings.toggle_logs.clone()),
+        ("focus_terminal", bindings.focus_terminal.clone()),
+        ("focus_chat", bindings.focus_chat.clone()),
+        ("focus_sidebar", bindings.focus_sidebar.clone()),
+        ("focus_logs", bindings.focus_logs.clone()),
+        (
+            "resize_sidebar_increase",
+            bindings.resize_sidebar_increase.clone(),
+        ),
+        (
+            "resize_sidebar_decrease",
+            bindings.resize_sidebar_decrease.clone(),
+        ),
+        (
+            "resize_chat_increase",
+            bindings.resize_chat_increase.clone(),
+        ),
+        (
+            "resize_chat_decrease",
+            bindings.resize_chat_decrease.clone(),
+        ),
+        (
+            "resize_logs_increase",
+            bindings.resize_logs_increase.clone(),
+        ),
+        (
+            "resize_logs_decrease",
+            bindings.resize_logs_decrease.clone(),
+        ),
+    ]
+}
+
 /// Parses a human-readable key combination into crossterm key data.
 pub fn parse_key_combo(input: &str) -> Result<ParsedKey> {
     let parts: Vec<&str> = input.split('+').map(str::trim).collect();

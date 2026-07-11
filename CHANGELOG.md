@@ -2,6 +2,16 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.10.0] - 2026-07-11
+
+### Added
+
+- `cargo xtask` automation for CI, formatting, tests, snapshots, benchmarks, and docs
+- Snapshot tests for default config TOML, keybindings, themes, layout geometry, and status bar rendering
+- Criterion benchmarks for keybinding parsing and Tantivy search
+- mdBook documentation site under `docs/src/` with architecture, configuration, and developer guides
+- Enhanced GitHub Actions workflow with xtask CI, benchmark, and docs build jobs
+
 ## [0.9.0] - 2026-07-11
 
 ### Added
