@@ -4,6 +4,7 @@ pub mod app;
 pub mod components;
 pub mod event;
 pub mod layout;
+pub mod markdown;
 pub mod theme;
 
 pub use app::{TerminalApp, TerminalAppOptions};

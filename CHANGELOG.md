@@ -2,6 +2,17 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.3.0] - 2026-07-11
+
+### Added
+
+- Streaming AI chat with OpenAI-compatible, Anthropic, and Gemini providers
+- Provider registry with OpenAI, Anthropic, OpenRouter, Ollama, Gemini, and DeepSeek
+- `ChatEngine` with async streaming and live response updates in the UI
+- Markdown rendering and syntax highlighting in the AI chat panel (pulldown-cmark + syntect)
+- SQLite conversation persistence with stable session history across restarts
+- Ollama enabled by default in config for local AI chat
+
 ## [0.2.0] - 2026-07-11
 
 ### Added

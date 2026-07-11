@@ -23,14 +23,14 @@
 - [ ] Split panes
 - [ ] In-terminal selection search UI polish
 
-## Phase 3 — AI Chat
+## Phase 3 — AI Chat ✅
 
-- [ ] OpenAI, Anthropic, OpenRouter, Ollama, Gemini, DeepSeek
-- [ ] Interchangeable providers
-- [ ] Streaming responses
-- [ ] Conversation history (SQLite)
-- [ ] Markdown rendering
-- [ ] Syntax highlighting
+- [x] OpenAI, Anthropic, OpenRouter, Ollama, Gemini, DeepSeek
+- [x] Interchangeable providers
+- [x] Streaming responses
+- [x] Conversation history (SQLite)
+- [x] Markdown rendering
+- [x] Syntax highlighting
 
 ## Phase 4 — Coding Agent
 

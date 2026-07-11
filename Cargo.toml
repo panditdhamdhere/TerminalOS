@@ -21,7 +21,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "MIT"
 authors = ["Pandit Dhamdhere"]
@@ -57,6 +57,10 @@ walkdir = "2.5"
 portable-pty = "0.8"
 vt100 = "0.15"
 arboard = "3.4"
+pulldown-cmark = "0.12"
+syntect = "5.2"
+bytes = "1.9"
+tokio-stream = "0.1"
 
 # Internal crates
 terminalos-ai = { path = "crates/ai" }

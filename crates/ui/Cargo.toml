@@ -10,16 +10,22 @@ rust-version.workspace = true
 description = "Ratatui user interface for TerminalOS."
 
 [dependencies]
+chrono.workspace = true
 crossterm.workspace = true
+pulldown-cmark.workspace = true
 ratatui.workspace = true
+syntect.workspace = true
+terminalos-ai.workspace = true
 terminalos-config.workspace = true
 terminalos-core.workspace = true
 terminalos-filesystem.workspace = true
+terminalos-memory.workspace = true
 terminalos-shared.workspace = true
 terminalos-terminal.workspace = true
 terminalos-workspace.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 ratatui = { workspace = true, features = ["crossterm", "serde"] }

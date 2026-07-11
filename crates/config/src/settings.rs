@@ -2,12 +2,76 @@ use serde::{Deserialize, Serialize};
 use terminalos_shared::ThemeMode;
 
 /// Root application configuration.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub ui: UiConfig,
     pub layout: LayoutConfig,
     pub providers: Vec<ProviderConfig>,
     pub default_provider: Option<String>,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            ui: UiConfig::default(),
+            layout: LayoutConfig::default(),
+            providers: default_providers(),
+            default_provider: Some("ollama".to_string()),
+        }
+    }
+}
+
+fn default_providers() -> Vec<ProviderConfig> {
+    vec![
+        ProviderConfig {
+            name: "ollama".to_string(),
+            provider_type: ProviderType::Ollama,
+            api_key_env: "OLLAMA_API_KEY".to_string(),
+            base_url: Some("http://localhost:11434/v1".to_string()),
+            model: "llama3.2".to_string(),
+            enabled: true,
+        },
+        ProviderConfig {
+            name: "openai".to_string(),
+            provider_type: ProviderType::OpenAi,
+            api_key_env: "OPENAI_API_KEY".to_string(),
+            base_url: None,
+            model: "gpt-4o".to_string(),
+            enabled: false,
+        },
+        ProviderConfig {
+            name: "anthropic".to_string(),
+            provider_type: ProviderType::Anthropic,
+            api_key_env: "ANTHROPIC_API_KEY".to_string(),
+            base_url: None,
+            model: "claude-sonnet-4-20250514".to_string(),
+            enabled: false,
+        },
+        ProviderConfig {
+            name: "openrouter".to_string(),
+            provider_type: ProviderType::OpenRouter,
+            api_key_env: "OPENROUTER_API_KEY".to_string(),
+            base_url: None,
+            model: "anthropic/claude-sonnet-4".to_string(),
+            enabled: false,
+        },
+        ProviderConfig {
+            name: "gemini".to_string(),
+            provider_type: ProviderType::Gemini,
+            api_key_env: "GEMINI_API_KEY".to_string(),
+            base_url: None,
+            model: "gemini-2.0-flash".to_string(),
+            enabled: false,
+        },
+        ProviderConfig {
+            name: "deepseek".to_string(),
+            provider_type: ProviderType::DeepSeek,
+            api_key_env: "DEEPSEEK_API_KEY".to_string(),
+            base_url: None,
+            model: "deepseek-chat".to_string(),
+            enabled: false,
+        },
+    ]
 }
 
 /// UI-related configuration.

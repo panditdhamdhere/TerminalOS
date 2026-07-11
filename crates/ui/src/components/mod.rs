@@ -5,7 +5,7 @@ pub mod status_bar;
 pub mod tabs;
 pub mod terminal_pane;
 
-pub use chat_pane::render_chat_pane;
+pub use chat_pane::{ChatPaneProps, render_chat_pane};
 pub use logs_pane::render_logs_pane;
 pub use sidebar::render_sidebar;
 pub use status_bar::render_status_bar;

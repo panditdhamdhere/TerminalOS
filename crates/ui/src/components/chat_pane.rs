@@ -3,30 +3,28 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget, Wrap};
+use terminalos_ai::{DisplayMessage, MessageRole};
 use terminalos_shared::Theme;
 
 use crate::event::FocusedPane;
+use crate::markdown::render_markdown;
 use crate::theme::UiPalette;
 
-/// A message in the AI chat panel.
-#[derive(Debug, Clone)]
-pub struct ChatMessage {
-    pub role: String,
-    pub content: String,
+/// Inputs for rendering the AI chat panel.
+pub struct ChatPaneProps<'a> {
+    pub messages: &'a [DisplayMessage],
+    pub input: &'a str,
+    pub provider: &'a str,
+    pub theme: &'a Theme,
+    pub focused: FocusedPane,
+    pub scroll: usize,
+    pub streaming: bool,
 }
 
-/// Renders the AI chat panel with conversation history and input.
-pub fn render_chat_pane(
-    area: Rect,
-    buf: &mut Buffer,
-    messages: &[ChatMessage],
-    input: &str,
-    theme: &Theme,
-    focused: FocusedPane,
-    scroll: usize,
-) {
-    let palette = UiPalette::from(theme);
-    let border_style = if focused == FocusedPane::Chat {
+/// Renders the AI chat panel with markdown and syntax-highlighted responses.
+pub fn render_chat_pane(area: Rect, buf: &mut Buffer, props: &ChatPaneProps<'_>) {
+    let palette = UiPalette::from(props.theme);
+    let border_style = if props.focused == FocusedPane::Chat {
         Style::default()
             .fg(palette.accent)
             .add_modifier(Modifier::BOLD)
@@ -34,8 +32,13 @@ pub fn render_chat_pane(
         Style::default().fg(palette.border)
     };
 
+    let status = if props.streaming {
+        " ● streaming"
+    } else {
+        ""
+    };
     let block = Block::default()
-        .title("  AI Assistant  ")
+        .title(format!("  AI Assistant ({}){status}  ", props.provider))
         .borders(Borders::ALL)
         .border_style(border_style)
         .style(
@@ -56,26 +59,52 @@ pub fn render_chat_pane(
         ..inner
     };
 
+    let width = inner.width as usize;
     let mut lines: Vec<Line> = Vec::new();
-    if messages.is_empty() {
+
+    let visible: Vec<&DisplayMessage> = props
+        .messages
+        .iter()
+        .filter(|m| m.role != MessageRole::System)
+        .skip(props.scroll)
+        .collect();
+
+    if visible.is_empty() {
         lines.push(Line::from(Span::styled(
             "Ask anything about your codebase...",
             Style::default().fg(palette.muted),
         )));
     } else {
-        for msg in messages.iter().skip(scroll) {
+        for msg in visible {
+            let role_label = match msg.role {
+                MessageRole::User => "you",
+                MessageRole::Assistant => "assistant",
+                MessageRole::System => "system",
+            };
             let role_style = Style::default()
-                .fg(if msg.role == "user" {
+                .fg(if msg.role == MessageRole::User {
                     palette.accent
                 } else {
                     palette.success
                 })
                 .add_modifier(Modifier::BOLD);
             lines.push(Line::from(Span::styled(
-                format!("{}:", msg.role),
+                format!("{role_label}:"),
                 role_style,
             )));
-            lines.push(Line::from(Span::raw(msg.content.as_str())));
+
+            if msg.role == MessageRole::Assistant {
+                lines.extend(render_markdown(&msg.content, props.theme, width));
+            } else {
+                lines.push(Line::from(Span::raw(msg.content.clone())));
+            }
+
+            if msg.streaming {
+                lines.push(Line::from(Span::styled(
+                    "▌",
+                    Style::default().add_modifier(Modifier::SLOW_BLINK),
+                )));
+            }
             lines.push(Line::from(""));
         }
     }
@@ -92,7 +121,7 @@ pub fn render_chat_pane(
     };
     let input_line = Paragraph::new(Line::from(vec![
         Span::styled("› ", Style::default().fg(palette.accent)),
-        Span::raw(input),
+        Span::raw(props.input),
         Span::styled("▌", Style::default().add_modifier(Modifier::SLOW_BLINK)),
     ]));
     Widget::render(input_line, input_area, buf);

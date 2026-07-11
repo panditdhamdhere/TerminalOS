@@ -9,19 +9,22 @@ use crossterm::terminal::{
 use crossterm::{ExecutableCommand, execute};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use terminalos_ai::ChatEngine;
 use terminalos_config::AppConfig;
+use terminalos_config::ConfigLoader;
 use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
-use terminalos_shared::{LogEntry, LogLevel, Theme, ThemeMode};
+use terminalos_memory::{ConversationRecord, MemoryStore};
+use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme, ThemeMode};
 use terminalos_terminal::{ShellManager, key_event_to_bytes};
 use terminalos_workspace::WorkspaceManager;
 use tokio::runtime::Runtime;
 use tracing::info;
+use uuid::Uuid;
 
-use crate::components::chat_pane::ChatMessage;
 use crate::components::{
-    render_chat_pane, render_logs_pane, render_sidebar, render_status_bar, render_tab_bar,
-    render_terminal_pane,
+    ChatPaneProps, render_chat_pane, render_logs_pane, render_sidebar, render_status_bar,
+    render_tab_bar, render_terminal_pane,
 };
 use crate::event::{AppAction, FocusedPane, map_key_event};
 use crate::layout::{LayoutVisibility, compute_layout};
@@ -33,6 +36,11 @@ pub struct TerminalAppOptions {
     pub config: AppConfig,
 }
 
+/// Stable session id so chat history survives restarts.
+fn default_chat_session() -> SessionId {
+    SessionId::from_uuid(Uuid::from_u128(0x0000_0000_0000_4000_8000_0000_0000_0001))
+}
+
 /// Main TerminalOS TUI application.
 pub struct TerminalApp {
     config: AppConfig,
@@ -42,8 +50,10 @@ pub struct TerminalApp {
     file_tree: Option<FileNode>,
     workspace_name: String,
     branch: Option<String>,
-    chat_messages: Vec<ChatMessage>,
+    chat: ChatEngine,
     chat_input: String,
+    chat_session_id: SessionId,
+    memory_path: PathBuf,
     logs: Vec<LogEntry>,
     focus: FocusedPane,
     sidebar_scroll: usize,
@@ -55,6 +65,7 @@ pub struct TerminalApp {
     should_quit: bool,
     last_frame: Instant,
     terminal_area: Option<ratatui::layout::Rect>,
+    runtime: Runtime,
 }
 
 impl TerminalApp {
@@ -89,12 +100,29 @@ impl TerminalApp {
         }
 
         let shell = ShellManager::new(&cwd, 24, 80)?;
+        let chat = ChatEngine::from_config(&options.config)?;
+        let runtime = Runtime::new()
+            .map_err(|e| terminalos_shared::Error::Ui(format!("tokio runtime: {e}")))?;
+        let memory_path = ConfigLoader::default_paths()
+            .config_file_path()
+            .parent()
+            .unwrap_or(std::path::Path::new(".terminalos"))
+            .join("memory.db");
 
         let mut logs = vec![
             LogEntry::info("TerminalOS started"),
             LogEntry::info(format!("Workspace: {workspace_name}")),
             LogEntry::info("PTY shell sessions active"),
         ];
+
+        if chat.has_providers() {
+            logs.push(LogEntry::info(format!(
+                "AI provider: {}",
+                chat.provider_name()
+            )));
+        } else {
+            logs.push(LogEntry::warn("No AI providers enabled in config"));
+        }
 
         if branch.is_some() {
             logs.push(LogEntry::info(format!(
@@ -114,8 +142,10 @@ impl TerminalApp {
             file_tree,
             workspace_name,
             branch,
-            chat_messages: Vec::new(),
+            chat,
             chat_input: String::new(),
+            chat_session_id: default_chat_session(),
+            memory_path,
             logs,
             focus: FocusedPane::Terminal,
             sidebar_scroll: 0,
@@ -124,14 +154,12 @@ impl TerminalApp {
             should_quit: false,
             last_frame: Instant::now(),
             terminal_area: None,
+            runtime,
         })
     }
 
     /// Runs the terminal UI event loop until quit.
     pub fn run(&mut self) -> terminalos_shared::Result<()> {
-        let rt = Runtime::new()
-            .map_err(|e| terminalos_shared::Error::Ui(format!("tokio runtime: {e}")))?;
-
         let events = std::sync::Arc::new(InMemoryEventBus);
         let _ctx = AppContext::new(self.config.clone(), events);
 
@@ -149,9 +177,14 @@ impl TerminalApp {
             .map_err(|e| terminalos_shared::Error::Ui(format!("terminal: {e}")))?;
 
         info!("TerminalOS UI started");
+        self.load_chat_history();
 
         while !self.should_quit {
             self.shell.poll_output();
+            let was_streaming = self.chat.is_streaming();
+            if self.chat.poll_stream() && was_streaming && !self.chat.is_streaming() {
+                self.persist_assistant_reply();
+            }
 
             terminal
                 .draw(|frame| self.render(frame))
@@ -185,7 +218,7 @@ impl TerminalApp {
                 self.last_frame = Instant::now();
             }
 
-            let _ = rt.handle();
+            let _ = self.runtime.handle();
         }
 
         if self.config.ui.mouse_enabled {
@@ -234,11 +267,15 @@ impl TerminalApp {
             render_chat_pane(
                 chat_area,
                 buf,
-                &self.chat_messages,
-                &self.chat_input,
-                &self.theme,
-                self.focus,
-                self.chat_scroll,
+                &ChatPaneProps {
+                    messages: self.chat.messages(),
+                    input: &self.chat_input,
+                    provider: self.chat.provider_name(),
+                    theme: &self.theme,
+                    focused: self.focus,
+                    scroll: self.chat_scroll,
+                    streaming: self.chat.is_streaming(),
+                },
             );
         }
 
@@ -441,17 +478,59 @@ impl TerminalApp {
             return;
         }
 
-        self.chat_messages.push(ChatMessage {
-            role: "user".to_string(),
-            content: content.clone(),
-        });
+        match self.chat.submit(content.clone()) {
+            Ok(()) => {
+                self.push_log(LogLevel::Info, "Chat message sent");
+                self.persist_message(terminalos_ai::MessageRole::User, content);
+            }
+            Err(e) => self.push_log(LogLevel::Error, format!("Chat error: {e}")),
+        }
+    }
 
-        self.chat_messages.push(ChatMessage {
-            role: "assistant".to_string(),
-            content: "AI providers connect in Phase 3. Your message was received.".to_string(),
-        });
+    fn persist_message(&self, role: terminalos_ai::MessageRole, content: String) {
+        if content.is_empty() {
+            return;
+        }
 
-        self.push_log(LogLevel::Info, "Chat message sent");
+        let path = self.memory_path.clone();
+        let session_id = self.chat_session_id;
+        let _ = self.runtime.block_on(async move {
+            let store = MemoryStore::open(&path).await?;
+            let record = ConversationRecord {
+                id: uuid::Uuid::new_v4(),
+                session_id,
+                role: role_to_str(role).to_string(),
+                content,
+                created_at: chrono::Utc::now(),
+            };
+            store.save_message(&record).await?;
+            Ok::<(), terminalos_shared::Error>(())
+        });
+    }
+
+    fn persist_assistant_reply(&self) {
+        let Some(last) = self.chat.messages().last() else {
+            return;
+        };
+        if last.role != terminalos_ai::MessageRole::Assistant || last.streaming {
+            return;
+        }
+        self.persist_message(terminalos_ai::MessageRole::Assistant, last.content.clone());
+    }
+
+    fn load_chat_history(&mut self) {
+        let path = self.memory_path.clone();
+        let session_id = self.chat_session_id;
+        if let Ok(records) = self.runtime.block_on(async move {
+            let store = MemoryStore::open(&path).await?;
+            store.list_messages(session_id).await
+        }) {
+            let history: Vec<(terminalos_ai::MessageRole, String)> = records
+                .into_iter()
+                .filter_map(|r| role_from_str(&r.role).map(|role| (role, r.content)))
+                .collect();
+            self.chat.load_history(history);
+        }
     }
 
     fn push_log(&mut self, level: LogLevel, message: impl Into<String>) {
@@ -459,5 +538,22 @@ impl TerminalApp {
         if self.logs.len() > 200 {
             self.logs.drain(0..50);
         }
+    }
+}
+
+fn role_from_str(s: &str) -> Option<terminalos_ai::MessageRole> {
+    match s {
+        "user" => Some(terminalos_ai::MessageRole::User),
+        "assistant" => Some(terminalos_ai::MessageRole::Assistant),
+        "system" => Some(terminalos_ai::MessageRole::System),
+        _ => None,
+    }
+}
+
+fn role_to_str(role: terminalos_ai::MessageRole) -> &'static str {
+    match role {
+        terminalos_ai::MessageRole::User => "user",
+        terminalos_ai::MessageRole::Assistant => "assistant",
+        terminalos_ai::MessageRole::System => "system",
     }
 }

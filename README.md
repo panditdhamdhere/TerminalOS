@@ -6,7 +6,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 
 > Repository: [github.com/panditdhamdhere/WarpShell](https://github.com/panditdhamdhere/WarpShell)
 
-## Features (Phase 1 + Phase 2)
+## Features (Phase 1 + Phase 2 + Phase 3)
 
 - **Real shell** — PTY-backed bash/zsh with streaming output
 - **ANSI colors** — full vt100 terminal emulation in the UI
@@ -14,6 +14,9 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Copy/paste** — Ctrl+Shift+C/V clipboard integration
 - **Search** — Ctrl+Shift+F to highlight matches in terminal output
 - **Scrollback** — 10,000 lines with mouse and keyboard scrolling
+- **AI chat** — streaming responses with markdown and syntax highlighting
+- **Multi-provider** — OpenAI, Anthropic, OpenRouter, Ollama, Gemini, DeepSeek
+- **Chat history** — conversations persisted to SQLite across sessions
 
 ## Quick Start
 
