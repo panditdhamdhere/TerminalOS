@@ -87,3 +87,9 @@
 - [x] First-run setup wizard
 - [x] Auto-detect API keys from `.env`
 - [x] Groq profile and `config provider` CLI
+
+## Phase 12 — Provider Switcher & Chat Errors ✅
+
+- [x] In-app provider picker (`Ctrl+P`) with hot-swap
+- [x] Provider status in status bar
+- [x] Inline chat error messages for API and agent failures

@@ -47,6 +47,11 @@ pub enum AppAction {
     RejectPending,
     ScrollUp,
     ScrollDown,
+    ToggleProviderPicker,
+    ProviderPickerUp,
+    ProviderPickerDown,
+    ProviderPickerSelect,
+    ProviderPickerCancel,
     Noop,
 }
 
@@ -57,8 +62,13 @@ pub fn map_key_event(
     focus: FocusedPane,
     terminal_search: bool,
     pending_action: bool,
+    provider_picker: bool,
     bindings: &KeybindingResolver,
 ) -> AppAction {
+    if provider_picker {
+        return map_provider_picker_keys(key);
+    }
+
     if let Some(global) = bindings.resolve(key) {
         return global_to_action(global);
     }
@@ -94,6 +104,17 @@ fn global_to_action(action: GlobalAction) -> AppAction {
         GlobalAction::ResizeChatDecrease => AppAction::ResizeChat(-1),
         GlobalAction::ResizeLogsIncrease => AppAction::ResizeLogs(1),
         GlobalAction::ResizeLogsDecrease => AppAction::ResizeLogs(-1),
+        GlobalAction::ToggleProviderPicker => AppAction::ToggleProviderPicker,
+    }
+}
+
+fn map_provider_picker_keys(key: KeyEvent) -> AppAction {
+    match key.code {
+        KeyCode::Up => AppAction::ProviderPickerUp,
+        KeyCode::Down => AppAction::ProviderPickerDown,
+        KeyCode::Enter => AppAction::ProviderPickerSelect,
+        KeyCode::Esc => AppAction::ProviderPickerCancel,
+        _ => AppAction::Noop,
     }
 }
 

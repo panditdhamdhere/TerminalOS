@@ -97,7 +97,16 @@ pub fn render_chat_pane(area: Rect, buf: &mut Buffer, props: &ChatPaneProps<'_>)
             )));
 
             if msg.role == MessageRole::Assistant {
-                lines.extend(render_markdown(&msg.content, props.theme, width));
+                if msg.is_error || msg.content.starts_with("⚠") {
+                    lines.push(Line::from(Span::styled(
+                        msg.content.clone(),
+                        Style::default()
+                            .fg(palette.error)
+                            .add_modifier(Modifier::BOLD),
+                    )));
+                } else {
+                    lines.extend(render_markdown(&msg.content, props.theme, width));
+                }
             } else {
                 lines.push(Line::from(Span::raw(msg.content.clone())));
             }

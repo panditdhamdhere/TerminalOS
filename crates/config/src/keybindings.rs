@@ -21,6 +21,7 @@ pub struct Keybindings {
     pub resize_chat_decrease: String,
     pub resize_logs_increase: String,
     pub resize_logs_decrease: String,
+    pub toggle_provider_picker: String,
 }
 
 impl Default for Keybindings {
@@ -44,6 +45,7 @@ impl Default for Keybindings {
             resize_chat_decrease: "Ctrl+Down".to_string(),
             resize_logs_increase: "Ctrl+Shift+Up".to_string(),
             resize_logs_decrease: "Ctrl+Shift+Down".to_string(),
+            toggle_provider_picker: "Ctrl+P".to_string(),
         }
     }
 }

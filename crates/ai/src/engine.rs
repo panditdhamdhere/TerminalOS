@@ -15,6 +15,7 @@ pub struct DisplayMessage {
     pub role: MessageRole,
     pub content: String,
     pub streaming: bool,
+    pub is_error: bool,
 }
 
 /// Manages AI chat conversations with streaming provider responses.
@@ -51,6 +52,7 @@ impl ChatEngine {
                 role: MessageRole::System,
                 content: "You are TerminalOS AI, a helpful coding assistant.".to_string(),
                 streaming: false,
+                is_error: false,
             }],
             provider_name,
             model,
@@ -79,6 +81,41 @@ impl ChatEngine {
         !self.registry.is_empty()
     }
 
+    #[must_use]
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+
+    /// Rebuilds the provider registry from updated config without clearing chat history.
+    pub fn reload_from_config(&mut self, config: &AppConfig) -> Result<()> {
+        if self.is_streaming() {
+            return Err(Error::Ai(
+                "cannot switch provider while streaming a response".to_string(),
+            ));
+        }
+
+        let registry =
+            ProviderRegistry::from_configs(&config.providers, config.default_provider.as_deref())?;
+
+        let provider_name = config
+            .default_provider
+            .clone()
+            .or_else(|| registry.names().first().cloned())
+            .unwrap_or_else(|| "none".to_string());
+
+        let model = config
+            .providers
+            .iter()
+            .find(|p| p.name == provider_name)
+            .map(|p| p.model.clone())
+            .unwrap_or_default();
+
+        self.registry = registry;
+        self.provider_name = provider_name;
+        self.model = model;
+        Ok(())
+    }
+
     pub fn submit(&mut self, content: String, handle: tokio::runtime::Handle) -> Result<()> {
         if content.trim().is_empty() {
             return Ok(());
@@ -86,12 +123,6 @@ impl ChatEngine {
         if self.is_streaming() {
             return Err(Error::Ai("already streaming a response".to_string()));
         }
-
-        self.messages.push(DisplayMessage {
-            role: MessageRole::User,
-            content,
-            streaming: false,
-        });
 
         let provider = self
             .registry
@@ -103,6 +134,13 @@ impl ChatEngine {
                         .to_string(),
                 )
             })?;
+
+        self.messages.push(DisplayMessage {
+            role: MessageRole::User,
+            content,
+            streaming: false,
+            is_error: false,
+        });
 
         let request_messages: Vec<ChatMessage> = self
             .messages
@@ -137,6 +175,7 @@ impl ChatEngine {
             role: MessageRole::Assistant,
             content: String::new(),
             streaming: true,
+            is_error: false,
         });
         self.streaming_index = Some(self.messages.len() - 1);
         self.stream_rx = Some(rx);
@@ -167,8 +206,9 @@ impl ChatEngine {
                 }
                 Err(e) => {
                     if let Some(idx) = self.streaming_index {
-                        self.messages[idx].content = format!("Error: {e}");
+                        self.messages[idx].content = format!("⚠ {e}");
                         self.messages[idx].streaming = false;
+                        self.messages[idx].is_error = true;
                     }
                     finished = true;
                 }
@@ -194,6 +234,7 @@ impl ChatEngine {
                 role,
                 content,
                 streaming: false,
+                is_error: false,
             });
         }
     }
@@ -209,10 +250,20 @@ impl ChatEngine {
 
     /// Appends a display message without triggering a provider call.
     pub fn push_message(&mut self, role: MessageRole, content: String) {
+        self.push_message_with_error(role, content, false);
+    }
+
+    /// Appends a display message, optionally styled as an error in the UI.
+    pub fn push_error(&mut self, content: String) {
+        self.push_message_with_error(MessageRole::Assistant, content, true);
+    }
+
+    fn push_message_with_error(&mut self, role: MessageRole, content: String, is_error: bool) {
         self.messages.push(DisplayMessage {
             role,
             content,
             streaming: false,
+            is_error,
         });
     }
 

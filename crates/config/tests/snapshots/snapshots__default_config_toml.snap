@@ -89,6 +89,7 @@ resize_chat_increase = "Ctrl+Up"
 resize_chat_decrease = "Ctrl+Down"
 resize_logs_increase = "Ctrl+Shift+Up"
 resize_logs_decrease = "Ctrl+Shift+Down"
+toggle_provider_picker = "Ctrl+P"
 
 [agent]
 max_iterations = 8

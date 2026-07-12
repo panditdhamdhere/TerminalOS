@@ -11,7 +11,10 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use terminalos_agent::{AgentOutcome, AgentSession, ConfirmedResult, parse_slash_command};
 use terminalos_ai::ChatEngine;
-use terminalos_config::{AppConfig, ConfigLoader, KeybindingResolver, resolve_theme};
+use terminalos_config::{
+    AppConfig, ConfigLoader, KeybindingResolver, ProviderStatus, enable_provider,
+    provider_is_ready, provider_statuses, resolve_theme,
+};
 use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
 use terminalos_memory::{ConversationRecord, MemoryStore};
@@ -26,8 +29,8 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::components::{
-    ChatPaneProps, render_chat_pane, render_logs_pane, render_sidebar, render_status_bar,
-    render_tab_bar, render_terminal_pane,
+    ChatPaneProps, StatusBarProps, render_chat_pane, render_logs_pane, render_provider_picker,
+    render_sidebar, render_status_bar, render_tab_bar, render_terminal_pane,
 };
 use crate::event::{AppAction, FocusedPane, map_key_event};
 use crate::layout::{LayoutVisibility, compute_layout};
@@ -47,6 +50,7 @@ fn default_chat_session() -> SessionId {
 /// Main TerminalOS TUI application.
 pub struct TerminalApp {
     config: AppConfig,
+    config_loader: ConfigLoader,
     theme: Theme,
     keybindings: KeybindingResolver,
     shell: ShellManager,
@@ -66,6 +70,9 @@ pub struct TerminalApp {
     show_sidebar: bool,
     show_chat: bool,
     show_logs: bool,
+    show_provider_picker: bool,
+    provider_picker_index: usize,
+    provider_list: Vec<ProviderStatus>,
     should_quit: bool,
     last_frame: Instant,
     terminal_area: Option<ratatui::layout::Rect>,
@@ -90,6 +97,7 @@ impl TerminalApp {
             options.config.ui.theme_preset.as_deref(),
         );
         let keybindings = KeybindingResolver::new(&options.config.keybindings);
+        let config_loader = ConfigLoader::default_paths();
 
         let mut workspace_manager = WorkspaceManager::new();
         let mut workspace_name = "local".to_string();
@@ -204,6 +212,7 @@ impl TerminalApp {
             show_chat,
             show_logs,
             config: options.config,
+            config_loader,
             theme,
             keybindings,
             shell,
@@ -220,6 +229,9 @@ impl TerminalApp {
             sidebar_scroll: 0,
             chat_scroll: 0,
             logs_scroll: 0,
+            show_provider_picker: false,
+            provider_picker_index: 0,
+            provider_list: Vec::new(),
             should_quit: false,
             last_frame: Instant::now(),
             terminal_area: None,
@@ -278,8 +290,14 @@ impl TerminalApp {
                     Event::Key(key) => {
                         let search = self.shell.is_search_mode();
                         let pending = self.agent.pending().is_some();
-                        let action =
-                            map_key_event(key, self.focus, search, pending, &self.keybindings);
+                        let action = map_key_event(
+                            key,
+                            self.focus,
+                            search,
+                            pending,
+                            self.show_provider_picker,
+                            &self.keybindings,
+                        );
                         self.handle_action(action);
                     }
                     Event::Mouse(mouse) => self.handle_mouse(mouse),
@@ -379,15 +397,31 @@ impl TerminalApp {
         render_status_bar(
             layout.status_bar,
             buf,
-            self.shell.session(),
-            self.workspace_manager
-                .active()
-                .map(|w| w.name.as_str())
-                .unwrap_or(&self.workspace_name),
-            self.branch.as_deref(),
-            self.focus,
+            &StatusBarProps {
+                session: self.shell.session(),
+                workspace_name: self
+                    .workspace_manager
+                    .active()
+                    .map(|w| w.name.as_str())
+                    .unwrap_or(&self.workspace_name),
+                branch: self.branch.as_deref(),
+                focus: self.focus,
+                provider: self.chat.provider_name(),
+                model: self.chat.model(),
+                provider_ready: self.active_provider_ready(),
+            },
             &self.theme,
         );
+
+        if self.show_provider_picker {
+            render_provider_picker(
+                area,
+                buf,
+                &self.provider_list,
+                self.provider_picker_index,
+                &self.theme,
+            );
+        }
     }
 
     fn handle_action(&mut self, action: AppAction) {
@@ -479,6 +513,11 @@ impl TerminalApp {
             AppAction::RejectPending => self.reject_pending_action(),
             AppAction::ScrollUp => self.scroll_up(),
             AppAction::ScrollDown => self.scroll_down(),
+            AppAction::ToggleProviderPicker => self.toggle_provider_picker(),
+            AppAction::ProviderPickerUp => self.move_provider_picker(-1),
+            AppAction::ProviderPickerDown => self.move_provider_picker(1),
+            AppAction::ProviderPickerSelect => self.select_provider_from_picker(),
+            AppAction::ProviderPickerCancel => self.close_provider_picker(),
             AppAction::Noop => {}
         }
     }
@@ -579,7 +618,11 @@ impl TerminalApp {
                 self.push_log(LogLevel::Info, "Chat message sent");
                 self.persist_message(terminalos_ai::MessageRole::User, content);
             }
-            Err(e) => self.push_log(LogLevel::Error, format!("Chat error: {e}")),
+            Err(e) => {
+                let message = format!("{e}");
+                self.chat.push_error(message.clone());
+                self.push_log(LogLevel::Error, format!("Chat error: {message}"));
+            }
         }
     }
 
@@ -597,7 +640,9 @@ impl TerminalApp {
             }
             Ok(AgentOutcome::StartChat(prompt)) => {
                 if let Err(e) = self.chat.submit(prompt, self.runtime.handle().clone()) {
-                    self.push_log(LogLevel::Error, format!("Agent chat error: {e}"));
+                    let message = format!("{e}");
+                    self.chat.push_error(message.clone());
+                    self.push_log(LogLevel::Error, format!("Agent chat error: {message}"));
                 }
             }
             Ok(AgentOutcome::RunAgentLoop(prompt)) => self.run_agent_loop(&prompt),
@@ -610,9 +655,14 @@ impl TerminalApp {
                 self.push_log(LogLevel::Info, "Action requires confirmation — press y/n");
             }
             Ok(AgentOutcome::Error(message)) => {
+                self.chat.push_error(message.clone());
                 self.push_log(LogLevel::Error, message);
             }
-            Err(e) => self.push_log(LogLevel::Error, format!("Agent error: {e}")),
+            Err(e) => {
+                let message = format!("{e}");
+                self.chat.push_error(message.clone());
+                self.push_log(LogLevel::Error, format!("Agent error: {message}"));
+            }
         }
     }
 
@@ -629,7 +679,11 @@ impl TerminalApp {
             Ok(other) => {
                 self.push_log(LogLevel::Warn, format!("Agent stopped: {other:?}"));
             }
-            Err(e) => self.push_log(LogLevel::Error, format!("Agent loop failed: {e}")),
+            Err(e) => {
+                let message = format!("{e}");
+                self.chat.push_error(message.clone());
+                self.push_log(LogLevel::Error, format!("Agent loop failed: {message}"));
+            }
         }
     }
 
@@ -758,6 +812,86 @@ impl TerminalApp {
         self.logs.push(LogEntry::new(level, message));
         if self.logs.len() > 200 {
             self.logs.drain(0..50);
+        }
+    }
+
+    fn active_provider_ready(&self) -> bool {
+        self.config
+            .providers
+            .iter()
+            .find(|provider| provider.name == self.chat.provider_name())
+            .is_some_and(provider_is_ready)
+    }
+
+    fn toggle_provider_picker(&mut self) {
+        if self.show_provider_picker {
+            self.close_provider_picker();
+            return;
+        }
+
+        self.provider_list = provider_statuses(&self.config);
+        if self.provider_list.is_empty() {
+            self.push_log(LogLevel::Warn, "No providers configured");
+            return;
+        }
+
+        self.provider_picker_index = self
+            .provider_list
+            .iter()
+            .position(|provider| provider.is_default)
+            .unwrap_or(0);
+        self.show_provider_picker = true;
+    }
+
+    fn close_provider_picker(&mut self) {
+        self.show_provider_picker = false;
+    }
+
+    fn move_provider_picker(&mut self, delta: isize) {
+        if self.provider_list.is_empty() {
+            return;
+        }
+        let len = self.provider_list.len();
+        let next = self.provider_picker_index as isize + delta;
+        let wrapped = ((next % len as isize) + len as isize) as usize % len;
+        self.provider_picker_index = wrapped;
+    }
+
+    fn select_provider_from_picker(&mut self) {
+        let Some(provider) = self.provider_list.get(self.provider_picker_index) else {
+            self.close_provider_picker();
+            return;
+        };
+        let name = provider.name.clone();
+        self.close_provider_picker();
+        self.switch_provider(&name);
+    }
+
+    fn switch_provider(&mut self, name: &str) {
+        if self.chat.provider_name() == name {
+            return;
+        }
+
+        enable_provider(&mut self.config, name, false);
+        if let Err(e) = self.config_loader.save(&self.config) {
+            let message = format!("Failed to save config: {e}");
+            self.chat.push_error(message.clone());
+            self.push_log(LogLevel::Error, message);
+            return;
+        }
+
+        match self.chat.reload_from_config(&self.config) {
+            Ok(()) => {
+                self.push_log(LogLevel::Info, format!("Switched AI provider to {name}"));
+            }
+            Err(e) => {
+                let message = format!("{e}");
+                self.chat.push_error(message.clone());
+                self.push_log(
+                    LogLevel::Error,
+                    format!("Provider switch failed: {message}"),
+                );
+            }
         }
     }
 }

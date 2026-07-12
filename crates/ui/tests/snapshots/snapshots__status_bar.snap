@@ -2,4 +2,4 @@
 source: crates/ui/tests/snapshots.rs
 expression: buffer_to_string(&buf)
 ---
- TerminalOS  │ ai_terminal │ main │ Tab: Terminal 1 │ Focus: Terminal │ Ctrl+Shift+C copy │ Ctrl+Shi
+ TerminalOS  │ ai_terminal │ main │ Tab: Terminal 1 │ AI: groq (llama-3.3-70b-versatile) │ Focus: Te

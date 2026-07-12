@@ -3,7 +3,7 @@ use ratatui::layout::Rect;
 use terminalos_config::LayoutConfig;
 use terminalos_shared::Theme;
 use terminalos_terminal::ShellSession;
-use terminalos_ui::components::render_status_bar;
+use terminalos_ui::components::{StatusBarProps, render_status_bar};
 use terminalos_ui::event::FocusedPane;
 use terminalos_ui::layout::{LayoutVisibility, compute_layout};
 
@@ -84,10 +84,15 @@ fn snapshot_status_bar() {
     render_status_bar(
         area,
         &mut buf,
-        &session,
-        "ai_terminal",
-        Some("main"),
-        FocusedPane::Terminal,
+        &StatusBarProps {
+            session: &session,
+            workspace_name: "ai_terminal",
+            branch: Some("main"),
+            focus: FocusedPane::Terminal,
+            provider: "groq",
+            model: "llama-3.3-70b-versatile",
+            provider_ready: true,
+        },
         &theme,
     );
 

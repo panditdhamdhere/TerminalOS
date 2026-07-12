@@ -24,6 +24,7 @@ pub enum GlobalAction {
     ResizeChatDecrease,
     ResizeLogsIncrease,
     ResizeLogsDecrease,
+    ToggleProviderPicker,
 }
 
 /// Parsed key combination from a config string like `Ctrl+Shift+Tab`.
@@ -105,6 +106,11 @@ impl KeybindingResolver {
             &bindings.resize_logs_decrease,
             GlobalAction::ResizeLogsDecrease,
         );
+        add_binding(
+            &mut entries,
+            &bindings.toggle_provider_picker,
+            GlobalAction::ToggleProviderPicker,
+        );
         Self { entries }
     }
 
@@ -162,6 +168,10 @@ pub fn binding_map(bindings: &Keybindings) -> Vec<(&'static str, String)> {
         (
             "resize_logs_decrease",
             bindings.resize_logs_decrease.clone(),
+        ),
+        (
+            "toggle_provider_picker",
+            bindings.toggle_provider_picker.clone(),
         ),
     ]
 }

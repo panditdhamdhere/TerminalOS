@@ -16,6 +16,7 @@ Global shortcuts are configurable in `config.toml` or `keybindings.toml`. Defaul
 | `Ctrl+←/→` | Resize sidebar |
 | `Ctrl+↑/↓` | Resize chat panel |
 | `Ctrl+Shift+↑/↓` | Resize logs panel |
+| `Ctrl+P` | Switch AI provider |
 | `Ctrl+Shift+C` | Copy terminal |
 | `Ctrl+Shift+V` | Paste to terminal |
 | `Ctrl+Shift+F` | Search in terminal |

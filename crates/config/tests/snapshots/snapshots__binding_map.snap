@@ -19,4 +19,5 @@ resize_sidebar_decrease=Ctrl+Left
 resize_sidebar_increase=Ctrl+Right
 toggle_chat=Ctrl+/
 toggle_logs=Ctrl+`
+toggle_provider_picker=Ctrl+P
 toggle_sidebar=Ctrl+B

@@ -2,6 +2,15 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.12.0] - 2026-07-12
+
+### Added
+
+- In-app AI provider picker (`Ctrl+P`) with hot-swap without restart
+- Active provider and model shown in the status bar
+- Inline chat error messages for missing keys, rate limits, network failures, and agent errors
+- `ChatEngine::reload_from_config()` for runtime provider switching
+
 ## [0.11.0] - 2026-07-12
 
 ### Added
