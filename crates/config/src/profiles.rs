@@ -110,7 +110,7 @@ pub fn ensure_default_profiles(profiles_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn default_profile_files() -> [(&'static str, &'static str); 3] {
+fn default_profile_files() -> [(&'static str, &'static str); 4] {
     [
         (
             "default",
@@ -146,6 +146,30 @@ description = "Coding-focused layout with wider terminal area"
 sidebar_width_percent = 15
 chat_width_percent = 35
 logs_height_percent = 12
+"#,
+        ),
+        (
+            "groq",
+            r#"name = "groq"
+description = "Groq cloud AI with full assistant layout"
+
+default_provider = "groq"
+
+[[providers]]
+name = "groq"
+provider_type = "groq"
+api_key_env = "GROQ_API_KEY"
+base_url = "https://api.groq.com/openai/v1"
+model = "llama-3.3-70b-versatile"
+enabled = true
+
+[[providers]]
+name = "ollama"
+provider_type = "ollama"
+api_key_env = "OLLAMA_API_KEY"
+base_url = "http://localhost:11434/v1"
+model = "llama3.2"
+enabled = false
 "#,
         ),
     ]

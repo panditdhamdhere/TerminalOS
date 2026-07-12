@@ -51,6 +51,14 @@ fn default_providers() -> Vec<ProviderConfig> {
             enabled: true,
         },
         ProviderConfig {
+            name: "groq".to_string(),
+            provider_type: ProviderType::Groq,
+            api_key_env: "GROQ_API_KEY".to_string(),
+            base_url: Some("https://api.groq.com/openai/v1".to_string()),
+            model: "llama-3.3-70b-versatile".to_string(),
+            enabled: false,
+        },
+        ProviderConfig {
             name: "openai".to_string(),
             provider_type: ProviderType::OpenAi,
             api_key_env: "OPENAI_API_KEY".to_string(),
@@ -160,6 +168,7 @@ pub enum ProviderType {
     Anthropic,
     OpenRouter,
     Ollama,
+    Groq,
     Gemini,
     DeepSeek,
 }

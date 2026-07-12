@@ -18,14 +18,16 @@ struct Cli {
     #[arg(long)]
     config_dir: Option<PathBuf>,
 
-    /// Configuration profile to load (default, minimal, coding, or custom)
+    /// Configuration profile to load (default, minimal, coding, groq, or custom)
     #[arg(long)]
     profile: Option<String>,
+
+    /// Skip the interactive first-run setup wizard
+    #[arg(long)]
+    skip_setup: bool,
 }
 
 fn main() -> terminalos_shared::Result<()> {
-    let _ = dotenvy::dotenv();
-
     let cli = Cli::parse();
 
     tracing_subscriber::fmt()
@@ -41,12 +43,16 @@ fn main() -> terminalos_shared::Result<()> {
         None => ConfigLoader::default_paths(),
     };
 
-    let config = match cli.profile {
-        Some(ref name) => {
-            info!("Loading profile: {name}");
-            loader.load_with_profile(name)?
+    let config = if let Some(ref name) = cli.profile {
+        info!("Loading profile: {name}");
+        terminalos_config::load_env_files(&loader);
+        let mut config = loader.load_with_profile(name)?;
+        if terminalos_config::auto_configure_providers(&mut config) {
+            loader.save(&config)?;
         }
-        None => loader.ensure_default()?,
+        config
+    } else {
+        loader.ensure_ready(cli.skip_setup)?
     };
     info!("TerminalOS v{} starting", env!("CARGO_PKG_VERSION"));
 

@@ -11,6 +11,7 @@ description = "Configuration management for TerminalOS."
 
 [dependencies]
 crossterm.workspace = true
+dotenvy = "0.15"
 serde.workspace = true
 terminalos-shared.workspace = true
 thiserror.workspace = true

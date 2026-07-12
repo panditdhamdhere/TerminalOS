@@ -65,6 +65,7 @@ impl ConfigLoader {
         }
 
         self.resolve_active_profile(&mut config)?;
+        merge_missing_providers(&mut config);
         Ok(config)
     }
 
@@ -166,6 +167,14 @@ fn dirs_config_path() -> PathBuf {
         Path::new(&home).join(".config").join("terminalos")
     } else {
         PathBuf::from(".terminalos")
+    }
+}
+
+fn merge_missing_providers(config: &mut AppConfig) {
+    for default in AppConfig::default().providers {
+        if !config.providers.iter().any(|p| p.name == default.name) {
+            config.providers.push(default);
+        }
     }
 }
 

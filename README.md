@@ -29,6 +29,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Theme presets** — dracula, nord, solarized-dark, and built-in dark/light themes
 - **Keybindings** — configurable global shortcuts via `config.toml` or `keybindings.toml`
 - **Developer tooling** — `cargo xtask` for CI, snapshots, benchmarks, and docs
+- **Groq onboarding** — first-class Groq provider, auto-detect API keys, first-run setup wizard
 
 ## Quick Start
 
@@ -60,8 +61,10 @@ cargo run -p terminalos -- --workspace /path/to/project
 Or with a configuration profile:
 
 ```bash
-cargo run -p terminalos -- --profile minimal
+cargo run -p terminalos -- --profile groq
 ```
+
+On first launch, TerminalOS runs a setup wizard if no AI provider is configured. Put `GROQ_API_KEY` in the project `.env` or `~/.config/terminalos/.env` for automatic Groq detection.
 
 ### CLI Tools
 
@@ -92,6 +95,8 @@ cargo run -p terminalos-cli -- config show
 cargo run -p terminalos-cli -- config themes
 cargo run -p terminalos-cli -- config profile list
 cargo run -p terminalos-cli -- config profile use minimal
+cargo run -p terminalos-cli -- config provider list
+cargo run -p terminalos-cli -- config provider use groq
 ```
 
 ### Coding Agent (Slash Commands)

@@ -28,6 +28,14 @@ model = "llama3.2"
 enabled = true
 
 [[providers]]
+name = "groq"
+provider_type = "groq"
+api_key_env = "GROQ_API_KEY"
+base_url = "https://api.groq.com/openai/v1"
+model = "llama-3.3-70b-versatile"
+enabled = false
+
+[[providers]]
 name = "openai"
 provider_type = "open_ai"
 api_key_env = "OPENAI_API_KEY"

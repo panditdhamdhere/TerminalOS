@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use terminalos_config::{ConfigLoader, builtin_preset_names};
+use terminalos_config::{
+    ConfigLoader, builtin_preset_names, load_env_files, provider_statuses, set_default_provider,
+};
 use terminalos_git::GitRepository;
 use terminalos_indexer::{ProjectIndexer, hybrid_config_from_embedding, semantic_db_for_index};
 use terminalos_plugin::{PluginInstaller, PluginManager, PluginMarketplace};
@@ -92,6 +94,19 @@ enum ConfigCommands {
         #[command(subcommand)]
         command: ProfileCommands,
     },
+    /// Manage AI providers
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ProviderCommands {
+    /// List configured AI providers
+    List,
+    /// Set the default enabled provider
+    Use { name: String },
 }
 
 #[derive(Debug, Subcommand)]
@@ -120,10 +135,10 @@ enum PluginCommands {
 }
 
 fn main() -> terminalos_shared::Result<()> {
-    let _ = dotenvy::dotenv();
-
     let cli = Cli::parse();
-    let config = ConfigLoader::default_paths().load().unwrap_or_default();
+    let loader = ConfigLoader::default_paths();
+    load_env_files(&loader);
+    let config = loader.load().unwrap_or_default();
 
     match cli.command {
         Commands::Status { path } => {
@@ -256,6 +271,26 @@ fn main() -> terminalos_shared::Result<()> {
                         println!("Sidebar: {}", config.ui.show_sidebar);
                         println!("Chat: {}", config.ui.show_chat);
                         println!("Logs: {}", config.ui.show_logs);
+                    }
+                },
+                Some(ConfigCommands::Provider { command }) => match command {
+                    ProviderCommands::List => {
+                        for status in provider_statuses(&config) {
+                            let default = if status.is_default { " [default]" } else { "" };
+                            let ready = if status.ready { "ready" } else { "not ready" };
+                            let enabled = if status.enabled { "on" } else { "off" };
+                            println!(
+                                "{} ({enabled}, {ready}){} — {}",
+                                status.name, default, status.model
+                            );
+                        }
+                    }
+                    ProviderCommands::Use { name } => {
+                        let config = set_default_provider(&loader, &name)?;
+                        println!("Default provider set to: {name}");
+                        if let Some(provider) = config.providers.iter().find(|p| p.name == name) {
+                            println!("Model: {}", provider.model);
+                        }
                     }
                 },
             }

@@ -2,6 +2,18 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.11.0] - 2026-07-12
+
+### Added
+
+- First-class `ProviderType::Groq` with default model and API URL
+- First-run setup wizard when no AI provider is ready
+- Auto-detection of `GROQ_API_KEY`, `OPENAI_API_KEY`, and local Ollama on startup
+- User-level secrets file at `~/.config/terminalos/.env`
+- Bundled `groq` configuration profile
+- CLI `config provider list` and `config provider use <name>` commands
+- `--skip-setup` flag for non-interactive launches
+
 ## [0.10.0] - 2026-07-11
 
 ### Added

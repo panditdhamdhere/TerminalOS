@@ -115,6 +115,15 @@ fn build_provider(config: &ProviderConfig) -> Result<Box<dyn AiProvider>> {
             config.api_key_env.clone(),
             config.model.clone(),
         ))),
+        ProviderType::Groq => Ok(Box::new(OpenAiCompatibleProvider::new(
+            config.name.clone(),
+            config
+                .base_url
+                .clone()
+                .unwrap_or_else(|| "https://api.groq.com/openai/v1".to_string()),
+            config.api_key_env.clone(),
+            config.model.clone(),
+        ))),
         ProviderType::Gemini => Ok(Box::new(GeminiProvider::new(
             config.name.clone(),
             config

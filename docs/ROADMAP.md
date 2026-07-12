@@ -80,3 +80,10 @@
 - [x] Snapshot tests
 - [x] Benchmarks
 - [x] Full documentation site
+
+## Phase 11 — Groq & Onboarding ✅
+
+- [x] First-class Groq provider type
+- [x] First-run setup wizard
+- [x] Auto-detect API keys from `.env`
+- [x] Groq profile and `config provider` CLI
