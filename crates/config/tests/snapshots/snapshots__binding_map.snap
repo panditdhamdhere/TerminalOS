@@ -2,9 +2,12 @@
 source: crates/config/tests/snapshots.rs
 expression: "lines.join(\"\\n\")"
 ---
+close_pane=Ctrl+Shift+W
 close_tab=Ctrl+W
 focus_chat=Ctrl+2
 focus_logs=Ctrl+4
+focus_next_pane=Ctrl+Shift+Right
+focus_prev_pane=Ctrl+Shift+Left
 focus_sidebar=Ctrl+3
 focus_terminal=Ctrl+1
 new_tab=Ctrl+T
@@ -17,6 +20,8 @@ resize_logs_decrease=Ctrl+Shift+Down
 resize_logs_increase=Ctrl+Shift+Up
 resize_sidebar_decrease=Ctrl+Left
 resize_sidebar_increase=Ctrl+Right
+split_horizontal=Alt+\
+split_vertical=Alt+-
 toggle_chat=Ctrl+/
 toggle_logs=Ctrl+`
 toggle_provider_picker=Ctrl+P

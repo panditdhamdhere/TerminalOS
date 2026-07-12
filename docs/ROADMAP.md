@@ -20,7 +20,7 @@
 - [x] Copy/paste (Ctrl+Shift+C/V)
 - [x] In-terminal search (Ctrl+Shift+F)
 - [x] Scrollback with mouse and keyboard
-- [ ] Split panes
+- [x] Split panes (horizontal and vertical)
 - [ ] In-terminal selection search UI polish
 
 ## Phase 3 — AI Chat ✅
@@ -93,3 +93,9 @@
 - [x] In-app provider picker (`Ctrl+P`) with hot-swap
 - [x] Provider status in status bar
 - [x] Inline chat error messages for API and agent failures
+
+## Phase 13 — Split Terminal Panes ✅
+
+- [x] Horizontal and vertical pane splits per tab
+- [x] Per-pane PTY sessions with kernel resize
+- [x] Pane focus cycling and close pane shortcuts

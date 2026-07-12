@@ -59,6 +59,10 @@ impl Default for SessionId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TabId(Uuid);
 
+/// Unique identifier for a pane within a terminal tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PaneId(Uuid);
+
 impl TabId {
     #[must_use]
     pub fn new() -> Self {
@@ -77,6 +81,29 @@ impl TabId {
 }
 
 impl Default for TabId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PaneId {
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+
+    #[must_use]
+    pub fn as_uuid(&self) -> Uuid {
+        self.0
+    }
+
+    #[must_use]
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
+
+impl Default for PaneId {
     fn default() -> Self {
         Self::new()
     }

@@ -22,6 +22,11 @@ pub struct Keybindings {
     pub resize_logs_increase: String,
     pub resize_logs_decrease: String,
     pub toggle_provider_picker: String,
+    pub split_horizontal: String,
+    pub split_vertical: String,
+    pub close_pane: String,
+    pub focus_next_pane: String,
+    pub focus_prev_pane: String,
 }
 
 impl Default for Keybindings {
@@ -46,6 +51,11 @@ impl Default for Keybindings {
             resize_logs_increase: "Ctrl+Shift+Up".to_string(),
             resize_logs_decrease: "Ctrl+Shift+Down".to_string(),
             toggle_provider_picker: "Ctrl+P".to_string(),
+            split_horizontal: "Alt+\\".to_string(),
+            split_vertical: "Alt+-".to_string(),
+            close_pane: "Ctrl+Shift+W".to_string(),
+            focus_next_pane: "Ctrl+Shift+Right".to_string(),
+            focus_prev_pane: "Ctrl+Shift+Left".to_string(),
         }
     }
 }

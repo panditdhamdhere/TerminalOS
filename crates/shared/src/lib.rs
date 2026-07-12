@@ -6,6 +6,6 @@ pub mod log;
 pub mod theme;
 
 pub use error::{Error, Result};
-pub use ids::{SessionId, TabId, WorkspaceId};
+pub use ids::{PaneId, SessionId, TabId, WorkspaceId};
 pub use log::{LogEntry, LogLevel};
 pub use theme::{Theme, ThemeMode};

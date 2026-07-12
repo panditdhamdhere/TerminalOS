@@ -52,6 +52,11 @@ pub enum AppAction {
     ProviderPickerDown,
     ProviderPickerSelect,
     ProviderPickerCancel,
+    SplitHorizontal,
+    SplitVertical,
+    ClosePane,
+    FocusNextPane,
+    FocusPrevPane,
     Noop,
 }
 
@@ -105,6 +110,11 @@ fn global_to_action(action: GlobalAction) -> AppAction {
         GlobalAction::ResizeLogsIncrease => AppAction::ResizeLogs(1),
         GlobalAction::ResizeLogsDecrease => AppAction::ResizeLogs(-1),
         GlobalAction::ToggleProviderPicker => AppAction::ToggleProviderPicker,
+        GlobalAction::SplitHorizontal => AppAction::SplitHorizontal,
+        GlobalAction::SplitVertical => AppAction::SplitVertical,
+        GlobalAction::ClosePane => AppAction::ClosePane,
+        GlobalAction::FocusNextPane => AppAction::FocusNextPane,
+        GlobalAction::FocusPrevPane => AppAction::FocusPrevPane,
     }
 }
 

@@ -1,18 +1,20 @@
 use std::collections::HashMap;
 
-use terminalos_shared::{Error, Result, TabId};
+use terminalos_shared::{Error, PaneId, Result};
 
 use crate::emulator::TerminalEmulator;
 use crate::history::CommandHistory;
+use crate::layout::{Area, SplitDirection, compute_pane_rects};
 use crate::pty::{PtyOutput, PtySession, output_channel};
 use crate::session::ShellSession;
 
-/// Manages PTY-backed shell sessions for all terminal tabs.
+/// Manages PTY-backed shell sessions for all terminal tabs and panes.
 pub struct ShellManager {
     session: ShellSession,
-    emulators: HashMap<TabId, TerminalEmulator>,
-    pty_sessions: HashMap<TabId, PtySession>,
-    history: HashMap<TabId, CommandHistory>,
+    emulators: HashMap<PaneId, TerminalEmulator>,
+    pty_sessions: HashMap<PaneId, PtySession>,
+    pane_cwds: HashMap<PaneId, String>,
+    history: HashMap<PaneId, CommandHistory>,
     output_rx: std::sync::mpsc::Receiver<PtyOutput>,
     output_tx: std::sync::mpsc::Sender<PtyOutput>,
     terminal_rows: u16,
@@ -31,6 +33,7 @@ impl ShellManager {
             session: ShellSession::new(&cwd),
             emulators: HashMap::new(),
             pty_sessions: HashMap::new(),
+            pane_cwds: HashMap::new(),
             history: HashMap::new(),
             output_rx,
             output_tx,
@@ -41,9 +44,10 @@ impl ShellManager {
             workspace_env: HashMap::new(),
         };
 
-        let tab_id = manager.session.active_tab().id;
+        let tab = manager.session.active_tab();
+        let pane_id = tab.active_pane;
         let env = manager.workspace_env.clone();
-        manager.spawn_tab_shell(tab_id, &cwd, &env)?;
+        manager.spawn_pane_shell(pane_id, &cwd, &env)?;
         Ok(manager)
     }
 
@@ -58,6 +62,7 @@ impl ShellManager {
             session,
             emulators: HashMap::new(),
             pty_sessions: HashMap::new(),
+            pane_cwds: HashMap::new(),
             history: HashMap::new(),
             output_rx,
             output_tx,
@@ -68,15 +73,21 @@ impl ShellManager {
             workspace_env: env.clone(),
         };
 
-        let tabs: Vec<(TabId, String)> = manager
+        let panes: Vec<(PaneId, String)> = manager
             .session
             .tabs
             .iter()
-            .map(|t| (t.id, t.cwd.clone()))
+            .flat_map(|tab| {
+                tab.layout
+                    .collect_panes()
+                    .into_iter()
+                    .map(|pane_id| (pane_id, tab.cwd.clone()))
+                    .collect::<Vec<_>>()
+            })
             .collect();
 
-        for (tab_id, cwd) in tabs {
-            manager.spawn_tab_shell(tab_id, &cwd, env)?;
+        for (pane_id, cwd) in panes {
+            manager.spawn_pane_shell(pane_id, &cwd, env)?;
         }
 
         Ok(manager)
@@ -93,40 +104,64 @@ impl ShellManager {
     }
 
     #[must_use]
+    pub fn active_pane_id(&self) -> PaneId {
+        self.session.active_tab().active_pane
+    }
+
+    #[must_use]
     pub fn active_emulator(&self) -> Option<&TerminalEmulator> {
-        let id = self.session.active_tab().id;
-        self.emulators.get(&id)
+        self.emulators.get(&self.active_pane_id())
     }
 
     #[must_use]
     pub fn active_emulator_mut(&mut self) -> Option<&mut TerminalEmulator> {
-        let id = self.session.active_tab().id;
-        self.emulators.get_mut(&id)
+        let pane_id = self.active_pane_id();
+        self.emulators.get_mut(&pane_id)
+    }
+
+    #[must_use]
+    pub fn emulator(&self, pane_id: PaneId) -> Option<&TerminalEmulator> {
+        self.emulators.get(&pane_id)
+    }
+
+    #[must_use]
+    pub fn active_pane_rects(&self, area: Area) -> Vec<(PaneId, Area)> {
+        compute_pane_rects(area, &self.session.active_tab().layout)
     }
 
     pub fn resize(&mut self, rows: u16, cols: u16) {
         self.terminal_rows = rows.max(4);
         self.terminal_cols = cols.max(20);
-        let rows = self.terminal_rows;
-        let cols = self.terminal_cols;
-        if let Some(emu) = self.active_emulator_mut() {
+        let pane_id = self.active_pane_id();
+        if let Some(emu) = self.emulators.get_mut(&pane_id) {
+            emu.resize(self.terminal_rows, self.terminal_cols);
+        }
+    }
+
+    pub fn resize_pane(&mut self, pane_id: PaneId, rows: u16, cols: u16) {
+        let rows = rows.max(4);
+        let cols = cols.max(20);
+        if let Some(emu) = self.emulators.get_mut(&pane_id) {
             emu.resize(rows, cols);
+        }
+        if let Some(pty) = self.pty_sessions.get_mut(&pane_id) {
+            let _ = pty.resize(rows, cols);
         }
     }
 
     pub fn poll_output(&mut self) {
         while let Ok(output) = self.output_rx.try_recv() {
-            if let Some(emu) = self.emulators.get_mut(&output.tab_id) {
+            if let Some(emu) = self.emulators.get_mut(&output.pane_id) {
                 emu.process(&output.data);
             }
         }
     }
 
     pub fn write_bytes(&mut self, data: &[u8]) -> Result<()> {
-        let tab_id = self.session.active_tab().id;
+        let pane_id = self.active_pane_id();
         let session = self
             .pty_sessions
-            .get_mut(&tab_id)
+            .get_mut(&pane_id)
             .ok_or_else(|| Error::Terminal("no active pty session".to_string()))?;
         session.write(data)
     }
@@ -142,26 +177,65 @@ impl ShellManager {
     pub fn new_tab(&mut self) -> Result<()> {
         let cwd = self.session.active_tab().cwd.clone();
         self.session.new_tab();
-        let tab_id = self.session.active_tab().id;
+        let pane_id = self.session.active_tab().active_pane;
         let env = self.workspace_env.clone();
-        self.spawn_tab_shell(tab_id, &cwd, &env)
+        self.spawn_pane_shell(pane_id, &cwd, &env)
     }
 
     pub fn close_active_tab(&mut self) -> bool {
         if self.session.tabs.len() <= 1 {
             return false;
         }
-        let tab_id = self.session.active_tab().id;
-        self.pty_sessions.remove(&tab_id);
-        self.emulators.remove(&tab_id);
-        self.history.remove(&tab_id);
+        let panes = self.session.active_tab().layout.collect_panes();
+        for pane_id in panes {
+            self.remove_pane_resources(pane_id);
+        }
         self.session.close_tab()
+    }
+
+    pub fn split_active_horizontal(&mut self) -> Result<()> {
+        self.split_active(SplitDirection::Horizontal)
+    }
+
+    pub fn split_active_vertical(&mut self) -> Result<()> {
+        self.split_active(SplitDirection::Vertical)
+    }
+
+    pub fn close_active_pane(&mut self) -> bool {
+        let tab = self.session.active_tab();
+        if tab.pane_count() <= 1 {
+            return false;
+        }
+
+        let pane_id = tab.active_pane;
+        let panes = tab.layout.collect_panes();
+        let focus_index = panes.iter().position(|id| *id == pane_id).unwrap_or(0);
+        let next_focus = if focus_index == 0 {
+            panes[1]
+        } else {
+            panes[focus_index - 1]
+        };
+
+        self.remove_pane_resources(pane_id);
+        let tab = self.session.active_tab_mut();
+        tab.layout.remove_pane(pane_id);
+        tab.active_pane = next_focus;
+        true
+    }
+
+    pub fn focus_next_pane(&mut self) {
+        self.session.focus_next_pane();
+    }
+
+    pub fn focus_prev_pane(&mut self) {
+        self.session.focus_prev_pane();
     }
 
     pub fn on_tab_switched(&mut self) {
         let rows = self.terminal_rows;
         let cols = self.terminal_cols;
-        if let Some(emu) = self.active_emulator_mut() {
+        let pane_id = self.active_pane_id();
+        if let Some(emu) = self.emulators.get_mut(&pane_id) {
             emu.resize(rows, cols);
         }
     }
@@ -258,27 +332,52 @@ impl ShellManager {
         self.terminal_cols as usize
     }
 
-    fn spawn_tab_shell(
+    fn split_active(&mut self, direction: SplitDirection) -> Result<()> {
+        let active_pane = self.active_pane_id();
+        let cwd = self
+            .pane_cwds
+            .get(&active_pane)
+            .cloned()
+            .unwrap_or_else(|| self.session.active_tab().cwd.clone());
+        let new_pane = PaneId::new();
+        let env = self.workspace_env.clone();
+        self.spawn_pane_shell(new_pane, &cwd, &env)?;
+
+        let tab = self.session.active_tab_mut();
+        tab.layout.split_pane(active_pane, direction, new_pane);
+        tab.active_pane = new_pane;
+        Ok(())
+    }
+
+    fn remove_pane_resources(&mut self, pane_id: PaneId) {
+        self.pty_sessions.remove(&pane_id);
+        self.emulators.remove(&pane_id);
+        self.history.remove(&pane_id);
+        self.pane_cwds.remove(&pane_id);
+    }
+
+    fn spawn_pane_shell(
         &mut self,
-        tab_id: TabId,
+        pane_id: PaneId,
         cwd: &str,
         env: &HashMap<String, String>,
     ) -> Result<()> {
         self.emulators.insert(
-            tab_id,
+            pane_id,
             TerminalEmulator::new(self.terminal_rows, self.terminal_cols),
         );
-        self.history.insert(tab_id, CommandHistory::new(1000));
+        self.history.insert(pane_id, CommandHistory::new(1000));
+        self.pane_cwds.insert(pane_id, cwd.to_string());
 
         let pty = PtySession::spawn(
-            tab_id,
+            pane_id,
             cwd,
             self.terminal_rows,
             self.terminal_cols,
             self.output_tx.clone(),
             env,
         )?;
-        self.pty_sessions.insert(tab_id, pty);
+        self.pty_sessions.insert(pane_id, pty);
         Ok(())
     }
 }

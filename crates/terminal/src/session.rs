@@ -1,30 +1,45 @@
-use terminalos_shared::TabId;
+use terminalos_shared::{PaneId, TabId};
 
-/// A single terminal tab backed by a PTY session.
+use crate::layout::SplitNode;
+
+/// A single terminal tab backed by one or more PTY panes.
 #[derive(Debug, Clone)]
 pub struct TerminalTab {
     pub id: TabId,
     pub title: String,
     pub cwd: String,
+    pub layout: SplitNode,
+    pub active_pane: PaneId,
 }
 
 impl TerminalTab {
     #[must_use]
     pub fn new(title: impl Into<String>, cwd: impl Into<String>) -> Self {
+        let pane_id = PaneId::new();
         Self {
             id: TabId::new(),
             title: title.into(),
             cwd: cwd.into(),
+            layout: SplitNode::single(pane_id),
+            active_pane: pane_id,
         }
     }
 
     #[must_use]
     pub fn with_id(id: TabId, title: impl Into<String>, cwd: impl Into<String>) -> Self {
+        let pane_id = PaneId::new();
         Self {
             id,
             title: title.into(),
             cwd: cwd.into(),
+            layout: SplitNode::single(pane_id),
+            active_pane: pane_id,
         }
+    }
+
+    #[must_use]
+    pub fn pane_count(&self) -> usize {
+        self.layout.pane_count()
     }
 }
 
@@ -58,6 +73,11 @@ impl ShellSession {
     #[must_use]
     pub fn active_tab(&self) -> &TerminalTab {
         &self.tabs[self.active_tab]
+    }
+
+    #[must_use]
+    pub fn active_tab_mut(&mut self) -> &mut TerminalTab {
+        &mut self.tabs[self.active_tab]
     }
 
     pub fn new_tab(&mut self) {
@@ -99,5 +119,36 @@ impl ShellSession {
         if index < self.tabs.len() {
             self.active_tab = index;
         }
+    }
+
+    pub fn focus_next_pane(&mut self) {
+        let panes = self.active_tab().layout.collect_panes();
+        if panes.len() <= 1 {
+            return;
+        }
+        let tab = self.active_tab_mut();
+        let current = panes
+            .iter()
+            .position(|pane| *pane == tab.active_pane)
+            .unwrap_or(0);
+        tab.active_pane = panes[(current + 1) % panes.len()];
+    }
+
+    pub fn focus_prev_pane(&mut self) {
+        let panes = self.active_tab().layout.collect_panes();
+        if panes.len() <= 1 {
+            return;
+        }
+        let tab = self.active_tab_mut();
+        let current = panes
+            .iter()
+            .position(|pane| *pane == tab.active_pane)
+            .unwrap_or(0);
+        let previous = if current == 0 {
+            panes.len() - 1
+        } else {
+            current - 1
+        };
+        tab.active_pane = panes[previous];
     }
 }

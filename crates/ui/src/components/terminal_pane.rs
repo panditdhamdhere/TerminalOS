@@ -3,13 +3,13 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget};
-use terminalos_shared::Theme;
-use terminalos_terminal::ShellManager;
+use terminalos_shared::{PaneId, Theme};
+use terminalos_terminal::{Area, ShellManager};
 
 use crate::event::FocusedPane;
 use crate::theme::UiPalette;
 
-/// Renders the PTY-backed terminal pane with ANSI colors.
+/// Renders all panes in the active terminal tab.
 pub fn render_terminal_pane(
     area: Rect,
     buf: &mut Buffer,
@@ -17,21 +17,67 @@ pub fn render_terminal_pane(
     theme: &Theme,
     focused: FocusedPane,
 ) {
-    let palette = UiPalette::from(theme);
+    let pane_rects = shell.active_pane_rects(Area {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: area.height,
+    });
+    let active_pane = shell.active_pane_id();
     let tab = shell.session().active_tab();
 
-    let border_style = if focused == FocusedPane::Terminal {
+    for (pane_id, pane_area) in pane_rects {
+        let rect = Rect {
+            x: pane_area.x,
+            y: pane_area.y,
+            width: pane_area.width,
+            height: pane_area.height,
+        };
+        let is_active = pane_id == active_pane;
+        let title = if shell.is_search_mode() && is_active {
+            format!("  {} — search: {}_  ", tab.title, shell.search_input())
+        } else if tab.pane_count() > 1 {
+            format!("  {} [{}]  ", tab.title, pane_label(pane_id, active_pane))
+        } else {
+            format!("  {}  ", tab.title)
+        };
+
+        render_single_pane(
+            rect,
+            buf,
+            shell,
+            pane_id,
+            &title,
+            theme,
+            focused == FocusedPane::Terminal && is_active,
+        );
+    }
+}
+
+fn pane_label(pane_id: PaneId, active_pane: PaneId) -> String {
+    if pane_id == active_pane {
+        "active".to_string()
+    } else {
+        "pane".to_string()
+    }
+}
+
+fn render_single_pane(
+    area: Rect,
+    buf: &mut Buffer,
+    shell: &ShellManager,
+    pane_id: PaneId,
+    title: &str,
+    theme: &Theme,
+    focused: bool,
+) {
+    let palette = UiPalette::from(theme);
+    let border_style = if focused {
         Style::default()
             .fg(palette.accent)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(palette.border)
-    };
-
-    let title = if shell.is_search_mode() {
-        format!("  {} — search: {}_  ", tab.title, shell.search_input())
-    } else {
-        format!("  {}  ", tab.title)
     };
 
     let block = Block::default()
@@ -55,7 +101,7 @@ pub fn render_terminal_pane(
     let height = inner.height as usize;
 
     let lines: Vec<Line> = shell
-        .active_emulator()
+        .emulator(pane_id)
         .map(|emu| emu.render_rows(height, width))
         .unwrap_or_default()
         .into_iter()

@@ -32,6 +32,7 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Groq onboarding** — first-class Groq provider, auto-detect API keys, first-run setup wizard
 - **Provider switcher** — `Ctrl+P` to hot-swap AI providers in-app without restart
 - **Chat error UX** — inline error messages for API failures and agent errors
+- **Split panes** — side-by-side or stacked shells per tab with `Alt+\` / `Alt+-`
 
 ## Quick Start
 

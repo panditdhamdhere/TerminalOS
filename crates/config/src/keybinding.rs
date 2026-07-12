@@ -25,6 +25,11 @@ pub enum GlobalAction {
     ResizeLogsIncrease,
     ResizeLogsDecrease,
     ToggleProviderPicker,
+    SplitHorizontal,
+    SplitVertical,
+    ClosePane,
+    FocusNextPane,
+    FocusPrevPane,
 }
 
 /// Parsed key combination from a config string like `Ctrl+Shift+Tab`.
@@ -111,6 +116,27 @@ impl KeybindingResolver {
             &bindings.toggle_provider_picker,
             GlobalAction::ToggleProviderPicker,
         );
+        add_binding(
+            &mut entries,
+            &bindings.split_horizontal,
+            GlobalAction::SplitHorizontal,
+        );
+        add_binding(
+            &mut entries,
+            &bindings.split_vertical,
+            GlobalAction::SplitVertical,
+        );
+        add_binding(&mut entries, &bindings.close_pane, GlobalAction::ClosePane);
+        add_binding(
+            &mut entries,
+            &bindings.focus_next_pane,
+            GlobalAction::FocusNextPane,
+        );
+        add_binding(
+            &mut entries,
+            &bindings.focus_prev_pane,
+            GlobalAction::FocusPrevPane,
+        );
         Self { entries }
     }
 
@@ -173,6 +199,11 @@ pub fn binding_map(bindings: &Keybindings) -> Vec<(&'static str, String)> {
             "toggle_provider_picker",
             bindings.toggle_provider_picker.clone(),
         ),
+        ("split_horizontal", bindings.split_horizontal.clone()),
+        ("split_vertical", bindings.split_vertical.clone()),
+        ("close_pane", bindings.close_pane.clone()),
+        ("focus_next_pane", bindings.focus_next_pane.clone()),
+        ("focus_prev_pane", bindings.focus_prev_pane.clone()),
     ]
 }
 

@@ -2,6 +2,15 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.13.0] - 2026-07-12
+
+### Added
+
+- Horizontal (`Alt+\`) and vertical (`Alt+-`) terminal pane splits per tab
+- Per-pane PTY sessions with kernel resize (SIGWINCH)
+- Pane focus cycling (`Ctrl+Shift+←/→`) and close pane (`Ctrl+Shift+W`)
+- `PaneId` and split layout tree in the terminal crate
+
 ## [0.12.0] - 2026-07-12
 
 ### Added

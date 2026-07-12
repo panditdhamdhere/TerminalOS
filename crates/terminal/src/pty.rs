@@ -3,27 +3,28 @@ use std::io::{Read, Write};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
-use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
-use terminalos_shared::{Error, Result, TabId};
+use portable_pty::{CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem};
+use terminalos_shared::{Error, PaneId, Result};
 use tracing::{debug, warn};
 
 /// Output event streamed from a PTY session.
 #[derive(Debug, Clone)]
 pub struct PtyOutput {
-    pub tab_id: TabId,
+    pub pane_id: PaneId,
     pub data: Vec<u8>,
 }
 
 /// Handle to a running PTY shell process.
 pub struct PtySession {
-    tab_id: TabId,
+    pane_id: PaneId,
+    master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     _child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
 impl PtySession {
     pub fn spawn(
-        tab_id: TabId,
+        pane_id: PaneId,
         cwd: &str,
         rows: u16,
         cols: u16,
@@ -62,7 +63,7 @@ impl PtySession {
             .take_writer()
             .map_err(|e| Error::Terminal(format!("take writer: {e}")))?;
 
-        let reader_tab = tab_id;
+        let reader_pane = pane_id;
         thread::spawn(move || {
             let mut buf = [0u8; 4096];
             loop {
@@ -72,7 +73,7 @@ impl PtySession {
                         let data = buf[..n].to_vec();
                         if output_tx
                             .send(PtyOutput {
-                                tab_id: reader_tab,
+                                pane_id: reader_pane,
                                 data,
                             })
                             .is_err()
@@ -81,16 +82,17 @@ impl PtySession {
                         }
                     }
                     Err(e) => {
-                        warn!(tab = %reader_tab.as_uuid(), error = %e, "pty read error");
+                        warn!(pane = %reader_pane.as_uuid(), error = %e, "pty read error");
                         break;
                     }
                 }
             }
-            debug!(tab = %reader_tab.as_uuid(), "pty reader exited");
+            debug!(pane = %reader_pane.as_uuid(), "pty reader exited");
         });
 
         Ok(Self {
-            tab_id,
+            pane_id,
+            master: pair.master,
             writer,
             _child: child,
         })
@@ -106,9 +108,20 @@ impl PtySession {
         Ok(())
     }
 
+    pub fn resize(&mut self, rows: u16, cols: u16) -> Result<()> {
+        self.master
+            .resize(PtySize {
+                rows: rows.max(4),
+                cols: cols.max(20),
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|e| Error::Terminal(format!("pty resize: {e}")))
+    }
+
     #[must_use]
-    pub fn tab_id(&self) -> TabId {
-        self.tab_id
+    pub fn pane_id(&self) -> PaneId {
+        self.pane_id
     }
 }
 

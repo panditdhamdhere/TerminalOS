@@ -276,9 +276,17 @@ impl TerminalApp {
                 .map_err(|e| terminalos_shared::Error::Ui(format!("draw: {e}")))?;
 
             if let Some(area) = self.terminal_area {
-                let rows = area.height.saturating_sub(2).max(4);
-                let cols = area.width.saturating_sub(2).max(20);
-                self.shell.resize(rows, cols);
+                let pane_rects = self.shell.active_pane_rects(terminalos_terminal::Area {
+                    x: area.x,
+                    y: area.y,
+                    width: area.width,
+                    height: area.height,
+                });
+                for (pane_id, rect) in pane_rects {
+                    let rows = rect.height.saturating_sub(2).max(4);
+                    let cols = rect.width.saturating_sub(2).max(20);
+                    self.shell.resize_pane(pane_id, rows, cols);
+                }
             }
 
             if event::poll(Duration::from_millis(16))
@@ -518,6 +526,27 @@ impl TerminalApp {
             AppAction::ProviderPickerDown => self.move_provider_picker(1),
             AppAction::ProviderPickerSelect => self.select_provider_from_picker(),
             AppAction::ProviderPickerCancel => self.close_provider_picker(),
+            AppAction::SplitHorizontal => match self.shell.split_active_horizontal() {
+                Ok(()) => self.push_log(LogLevel::Info, "Split pane horizontally"),
+                Err(e) => self.push_log(LogLevel::Error, format!("Split failed: {e}")),
+            },
+            AppAction::SplitVertical => match self.shell.split_active_vertical() {
+                Ok(()) => self.push_log(LogLevel::Info, "Split pane vertically"),
+                Err(e) => self.push_log(LogLevel::Error, format!("Split failed: {e}")),
+            },
+            AppAction::ClosePane => {
+                if self.shell.close_active_pane() {
+                    self.push_log(LogLevel::Info, "Pane closed");
+                }
+            }
+            AppAction::FocusNextPane => {
+                self.shell.focus_next_pane();
+                self.push_log(LogLevel::Info, "Focused next pane");
+            }
+            AppAction::FocusPrevPane => {
+                self.shell.focus_prev_pane();
+                self.push_log(LogLevel::Info, "Focused previous pane");
+            }
             AppAction::Noop => {}
         }
     }

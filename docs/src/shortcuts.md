@@ -17,6 +17,10 @@ Global shortcuts are configurable in `config.toml` or `keybindings.toml`. Defaul
 | `Ctrl+↑/↓` | Resize chat panel |
 | `Ctrl+Shift+↑/↓` | Resize logs panel |
 | `Ctrl+P` | Switch AI provider |
+| `Alt+\` | Split terminal horizontally |
+| `Alt+-` | Split terminal vertically |
+| `Ctrl+Shift+W` | Close active pane |
+| `Ctrl+Shift+←/→` | Focus previous/next pane |
 | `Ctrl+Shift+C` | Copy terminal |
 | `Ctrl+Shift+V` | Paste to terminal |
 | `Ctrl+Shift+F` | Search in terminal |
