@@ -33,6 +33,8 @@ TerminalOS is a production-grade, cross-platform terminal application built in R
 - **Provider switcher** — `Ctrl+P` to hot-swap AI providers in-app without restart
 - **Chat error UX** — inline error messages for API failures and agent errors
 - **Split panes** — side-by-side or stacked shells per tab with `Alt+\` / `Alt+-`
+- **Release builds** — tagged GitHub Releases with macOS/Linux binaries
+- **Live docs** — mdBook site auto-deployed to GitHub Pages
 
 ## Quick Start
 
@@ -178,9 +180,21 @@ cargo xtask ci          # local CI pipeline
 cargo xtask snapshot    # verify UI/config snapshots
 cargo xtask bench       # run benchmarks
 cargo xtask docs        # build documentation site
+cargo xtask dist        # package release binaries into dist/
 ```
 
-Documentation site source lives in `docs/src/`. Build output is written to `docs/book/`.
+Documentation: [panditdhamdhere.github.io/TerminalOS](https://panditdhamdhere.github.io/TerminalOS/) (auto-deployed from `main`). Source lives in `docs/src/`; build output is `docs/book/`.
+
+### Releases
+
+Push a version tag to trigger release builds:
+
+```bash
+git tag v0.14.0
+git push origin v0.14.0
+```
+
+GitHub Actions publishes `terminalos`, `terminalos-cli`, and `terminalos-daemon` tarballs for Linux and macOS with SHA256 checksums.
 
 ## Architecture
 

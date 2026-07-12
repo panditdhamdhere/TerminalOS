@@ -32,6 +32,8 @@ enum Commands {
     },
     /// Build the mdBook documentation site
     Docs,
+    /// Package release binaries into dist/
+    Dist,
     /// Install git commit hooks
     Hooks,
 }
@@ -46,6 +48,7 @@ fn main() -> ExitCode {
         Commands::Bench => run_bench(),
         Commands::Snapshot { update } => run_snapshot(update),
         Commands::Docs => run_docs(),
+        Commands::Dist => run_dist(),
         Commands::Hooks => run_hooks(),
     }
 }
@@ -130,6 +133,67 @@ fn run_docs() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn run_dist() -> ExitCode {
+    let root = project_root();
+    let version = std::fs::read_to_string(root.join("Cargo.toml"))
+        .ok()
+        .and_then(|content| {
+            content
+                .lines()
+                .find(|line| line.starts_with("version = "))
+                .and_then(|line| line.split('"').nth(1))
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "0.0.0".to_string());
+
+    let build = run_command({
+        let mut cmd = cargo();
+        cmd.args([
+            "build",
+            "--release",
+            "-p",
+            "terminalos",
+            "-p",
+            "terminalos-cli",
+            "-p",
+            "terminalos-daemon",
+        ]);
+        cmd
+    });
+    if build != ExitCode::SUCCESS {
+        return build;
+    }
+
+    let target = std::env::var("TARGET")
+        .unwrap_or_else(|_| format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS));
+    let staging = format!("terminalos-{version}-{target}");
+    let dist_dir = root.join("dist").join(&staging);
+    if let Err(err) = std::fs::create_dir_all(&dist_dir) {
+        eprintln!("Failed to create dist dir: {err}");
+        return ExitCode::FAILURE;
+    }
+
+    let release_dir = root.join("target/release");
+    for binary in ["terminalos", "terminalos-cli", "terminalos-daemon"] {
+        let src = release_dir.join(binary);
+        let dst = dist_dir.join(binary);
+        if let Err(err) = std::fs::copy(&src, &dst) {
+            eprintln!("Failed to copy {binary}: {err}");
+            return ExitCode::FAILURE;
+        }
+    }
+
+    for extra in ["README.md", "LICENSE"] {
+        let src = root.join(extra);
+        if src.exists() {
+            let _ = std::fs::copy(&src, dist_dir.join(extra));
+        }
+    }
+
+    println!("Release binaries staged at {}", dist_dir.display());
+    ExitCode::SUCCESS
 }
 
 fn run_hooks() -> ExitCode {

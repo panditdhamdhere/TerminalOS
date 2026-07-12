@@ -13,8 +13,32 @@ cargo xtask snapshot    # verify snapshot tests
 cargo xtask snapshot --update  # refresh snapshot files
 cargo xtask bench       # run criterion benchmarks
 cargo xtask docs        # build mdBook site to docs/book/
+cargo xtask dist        # package release binaries into dist/
 cargo xtask hooks       # install commit-msg git hook
 ```
+
+## Releases
+
+Tagged releases are built by `.github/workflows/release.yml`:
+
+```bash
+git tag v0.14.0
+git push origin v0.14.0
+```
+
+This publishes Linux and macOS tarballs containing `terminalos`, `terminalos-cli`, and `terminalos-daemon`.
+
+Local packaging without CI:
+
+```bash
+cargo xtask dist
+```
+
+## Documentation deploy
+
+The mdBook site deploys to GitHub Pages on pushes to `main` that touch `docs/src/` or `book.toml`. Live site: [panditdhamdhere.github.io/TerminalOS](https://panditdhamdhere.github.io/TerminalOS/).
+
+Enable **GitHub Pages → Source: GitHub Actions** in repository settings.
 
 ## Quality gates
 

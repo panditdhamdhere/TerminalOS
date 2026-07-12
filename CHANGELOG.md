@@ -2,6 +2,15 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.14.0] - 2026-07-12
+
+### Added
+
+- GitHub Actions `release.yml` — builds and publishes tarballs on `v*` tags (Linux + macOS)
+- GitHub Actions `docs-deploy.yml` — deploys mdBook site to GitHub Pages on push to `main`
+- `cargo xtask dist` — local release binary packaging into `dist/`
+- `site-url` in `book.toml` for GitHub Pages
+
 ## [0.13.0] - 2026-07-12
 
 ### Added

@@ -9,5 +9,6 @@ src = "docs/src"
 build-dir = "docs/book"
 
 [output.html]
-git-repository-url = "https://github.com/panditdhamdhere/WarpShell"
-edit-url-template = "https://github.com/panditdhamdhere/WarpShell/edit/main/{path}"
+site-url = "https://panditdhamdhere.github.io/TerminalOS/"
+git-repository-url = "https://github.com/panditdhamdhere/TerminalOS"
+edit-url-template = "https://github.com/panditdhamdhere/TerminalOS/edit/main/{path}"

@@ -99,3 +99,10 @@
 - [x] Horizontal and vertical pane splits per tab
 - [x] Per-pane PTY sessions with kernel resize
 - [x] Pane focus cycling and close pane shortcuts
+
+## Phase 14 — Release & Docs Deploy ✅
+
+- [x] GitHub Actions release workflow on version tags
+- [x] macOS and Linux release tarballs with checksums
+- [x] GitHub Pages deployment for mdBook docs
+- [x] `cargo xtask dist` local packaging helper
