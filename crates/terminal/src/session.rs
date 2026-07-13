@@ -38,6 +38,28 @@ impl TerminalTab {
     }
 
     #[must_use]
+    pub fn restore(
+        id: TabId,
+        title: impl Into<String>,
+        cwd: impl Into<String>,
+        layout: SplitNode,
+        active_pane: PaneId,
+    ) -> Self {
+        let active_pane = if layout.contains_pane(active_pane) {
+            active_pane
+        } else {
+            layout.collect_panes()[0]
+        };
+        Self {
+            id,
+            title: title.into(),
+            cwd: cwd.into(),
+            layout,
+            active_pane,
+        }
+    }
+
+    #[must_use]
     pub fn pane_count(&self) -> usize {
         self.layout.pane_count()
     }

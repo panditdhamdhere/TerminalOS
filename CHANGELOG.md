@@ -2,6 +2,13 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.15.0] - 2026-07-14
+
+### Added
+
+- Split terminal layout persistence in workspace snapshots
+- Split tree JSON serialization with pane ID restoration on reload
+
 ## [0.14.0] - 2026-07-12
 
 ### Added

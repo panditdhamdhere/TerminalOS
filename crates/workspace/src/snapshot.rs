@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use terminalos_shared::{TabId, WorkspaceId};
+use terminalos_shared::{PaneId, TabId, WorkspaceId};
 
 /// Persisted terminal tab state.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -11,6 +11,10 @@ pub struct TabSnapshot {
     pub title: String,
     pub cwd: String,
     pub position: usize,
+    #[serde(default)]
+    pub layout_json: Option<String>,
+    #[serde(default)]
+    pub active_pane: Option<PaneId>,
 }
 
 /// Persisted UI pane visibility and focus.

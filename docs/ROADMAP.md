@@ -106,3 +106,8 @@
 - [x] macOS and Linux release tarballs with checksums
 - [x] GitHub Pages deployment for mdBook docs
 - [x] `cargo xtask dist` local packaging helper
+
+## Phase 15 — Split Persistence ✅
+
+- [x] Serialize split layout tree per tab in workspace snapshot
+- [x] Restore pane IDs and active pane on session reload

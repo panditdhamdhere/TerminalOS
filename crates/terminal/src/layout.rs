@@ -1,4 +1,5 @@
-use terminalos_shared::PaneId;
+use serde::{Deserialize, Serialize};
+use terminalos_shared::{Error, PaneId, Result};
 
 /// Minimum pane dimensions when splitting.
 pub const MIN_PANE_WIDTH: u16 = 20;
@@ -14,7 +15,8 @@ pub struct Area {
 }
 
 /// Split orientation within a terminal tab.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SplitDirection {
     /// Side-by-side panes.
     Horizontal,
@@ -23,7 +25,8 @@ pub enum SplitDirection {
 }
 
 /// Tree of terminal panes within a tab.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SplitNode {
     Leaf {
         pane_id: PaneId,
@@ -111,6 +114,16 @@ impl SplitNode {
     pub fn contains_pane(&self, pane_id: PaneId) -> bool {
         self.collect_panes().contains(&pane_id)
     }
+}
+
+/// Serializes a split layout tree to JSON for workspace persistence.
+pub fn serialize_layout(node: &SplitNode) -> Result<String> {
+    serde_json::to_string(node).map_err(|e| Error::Terminal(format!("serialize layout: {e}")))
+}
+
+/// Restores a split layout tree from persisted JSON.
+pub fn deserialize_layout(json: &str) -> Result<SplitNode> {
+    serde_json::from_str(json).map_err(|e| Error::Terminal(format!("deserialize layout: {e}")))
 }
 
 /// Computes render rectangles for each pane in a split layout.

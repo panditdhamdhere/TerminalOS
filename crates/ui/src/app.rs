@@ -20,9 +20,12 @@ use terminalos_filesystem::{FileNode, FileTree};
 use terminalos_memory::{ConversationRecord, MemoryStore};
 use terminalos_plugin::PluginManager;
 use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme};
-use terminalos_terminal::{ShellManager, ShellSession, TerminalTab, key_event_to_bytes};
+use terminalos_terminal::{
+    ShellManager, ShellSession, TerminalTab, deserialize_layout, key_event_to_bytes,
+    serialize_layout,
+};
 use terminalos_workspace::{
-    UiSnapshot, WorkspaceManager, WorkspaceSnapshot, WorkspaceStore, tabs_from_session,
+    TabSnapshot, UiSnapshot, WorkspaceManager, WorkspaceSnapshot, WorkspaceStore,
 };
 use tokio::runtime::Runtime;
 use tracing::info;
@@ -808,14 +811,22 @@ impl TerminalApp {
             return;
         };
 
-        let tab_data: Vec<(terminalos_shared::TabId, String, String)> = self
+        let tab_data: Vec<TabSnapshot> = self
             .shell
             .session()
             .tabs
             .iter()
-            .map(|t| (t.id, t.title.clone(), t.cwd.clone()))
+            .enumerate()
+            .map(|(position, tab)| TabSnapshot {
+                id: tab.id,
+                title: tab.title.clone(),
+                cwd: tab.cwd.clone(),
+                position,
+                layout_json: serialize_layout(&tab.layout).ok(),
+                active_pane: Some(tab.active_pane),
+            })
             .collect();
-        let tabs = tabs_from_session(&tab_data);
+        let tabs = tab_data;
         let ui = UiSnapshot {
             show_sidebar: self.show_sidebar,
             show_chat: self.show_chat,
@@ -971,7 +982,15 @@ fn restore_shell_from_snapshot(
     let tabs: Vec<TerminalTab> = snapshot
         .tabs
         .iter()
-        .map(|t| TerminalTab::with_id(t.id, &t.title, &t.cwd))
+        .map(|t| {
+            if let Some(ref layout_json) = t.layout_json {
+                if let Ok(layout) = deserialize_layout(layout_json) {
+                    let active_pane = t.active_pane.unwrap_or_else(|| layout.collect_panes()[0]);
+                    return TerminalTab::restore(t.id, &t.title, &t.cwd, layout, active_pane);
+                }
+            }
+            TerminalTab::with_id(t.id, &t.title, &t.cwd)
+        })
         .collect();
     let session = ShellSession::from_tabs(tabs, snapshot.ui.active_tab);
     ShellManager::from_restored(session, rows, cols, &snapshot.env)

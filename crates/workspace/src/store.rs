@@ -5,7 +5,7 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use sqlx::Row;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
-use terminalos_shared::{Error, Result, TabId, WorkspaceId};
+use terminalos_shared::{Error, PaneId, Result, TabId, WorkspaceId};
 use uuid::Uuid;
 
 use crate::snapshot::{TabSnapshot, UiSnapshot, WorkspaceSnapshot, WorkspaceSummary};
@@ -79,6 +79,13 @@ impl WorkspaceStore {
         .await
         .map_err(|e| Error::Database(format!("migration failed: {e}")))?;
 
+        let _ = sqlx::query("ALTER TABLE terminal_tabs ADD COLUMN layout_json TEXT")
+            .execute(&self.pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE terminal_tabs ADD COLUMN active_pane TEXT")
+            .execute(&self.pool)
+            .await;
+
         Ok(())
     }
 
@@ -126,13 +133,15 @@ impl WorkspaceStore {
 
         for tab in &snapshot.tabs {
             sqlx::query(
-                "INSERT INTO terminal_tabs (workspace_id, tab_id, title, cwd, position) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO terminal_tabs (workspace_id, tab_id, title, cwd, position, layout_json, active_pane) VALUES (?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(&ws_id)
             .bind(tab.id.as_uuid().to_string())
             .bind(&tab.title)
             .bind(&tab.cwd)
             .bind(tab.position as i64)
+            .bind(&tab.layout_json)
+            .bind(tab.active_pane.map(|pane| pane.as_uuid().to_string()))
             .execute(&mut *tx)
             .await
             .map_err(|e| Error::Database(format!("save tab: {e}")))?;
@@ -196,7 +205,7 @@ impl WorkspaceStore {
         }
 
         let tab_rows = sqlx::query(
-            "SELECT tab_id, title, cwd, position FROM terminal_tabs WHERE workspace_id = ? ORDER BY position ASC",
+            "SELECT tab_id, title, cwd, position, layout_json, active_pane FROM terminal_tabs WHERE workspace_id = ? ORDER BY position ASC",
         )
         .bind(&ws_id)
         .fetch_all(&self.pool)
@@ -209,6 +218,8 @@ impl WorkspaceStore {
             let title: String = tab_row.get("title");
             let cwd: String = tab_row.get("cwd");
             let position: i64 = tab_row.get("position");
+            let layout_json: Option<String> = tab_row.get("layout_json");
+            let active_pane: Option<String> = tab_row.get("active_pane");
             tabs.push(TabSnapshot {
                 id: TabId::from_uuid(
                     Uuid::parse_str(&tab_id)
@@ -217,6 +228,14 @@ impl WorkspaceStore {
                 title,
                 cwd,
                 position: position as usize,
+                layout_json,
+                active_pane: active_pane
+                    .map(|value| {
+                        Uuid::parse_str(&value)
+                            .map(PaneId::from_uuid)
+                            .map_err(|e| Error::Database(format!("invalid pane uuid: {e}")))
+                    })
+                    .transpose()?,
             });
         }
 
@@ -327,6 +346,8 @@ mod tests {
                 title: "Terminal 1".to_string(),
                 cwd: dir.path().display().to_string(),
                 position: 0,
+                layout_json: None,
+                active_pane: None,
             }],
             env: HashMap::from([("FOO".to_string(), "bar".to_string())]),
             ui: UiSnapshot::default(),

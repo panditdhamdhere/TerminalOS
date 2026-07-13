@@ -177,6 +177,8 @@ pub fn tabs_from_session(tabs: &[(TabId, String, String)]) -> Vec<TabSnapshot> {
             title: title.clone(),
             cwd: cwd.clone(),
             position,
+            layout_json: None,
+            active_pane: None,
         })
         .collect()
 }
