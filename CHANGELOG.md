@@ -2,6 +2,13 @@
 
 All notable changes to TerminalOS are documented here.
 
+## [0.16.0] - 2026-07-14
+
+### Added
+
+- Per-workspace AI chat history derived from workspace ID
+- Chat sessions registered in SQLite memory store per project
+
 ## [0.15.0] - 2026-07-14
 
 ### Added

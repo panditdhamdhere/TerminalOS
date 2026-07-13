@@ -111,3 +111,8 @@
 
 - [x] Serialize split layout tree per tab in workspace snapshot
 - [x] Restore pane IDs and active pane on session reload
+
+## Phase 16 — Per-Workspace Chat ✅
+
+- [x] Derive chat session ID from workspace ID
+- [x] Load workspace-specific conversation history on startup

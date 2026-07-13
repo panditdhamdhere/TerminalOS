@@ -17,9 +17,9 @@ use terminalos_config::{
 };
 use terminalos_core::{AppContext, InMemoryEventBus};
 use terminalos_filesystem::{FileNode, FileTree};
-use terminalos_memory::{ConversationRecord, MemoryStore};
+use terminalos_memory::{ConversationRecord, MemoryStore, SessionRecord};
 use terminalos_plugin::PluginManager;
-use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme};
+use terminalos_shared::{LogEntry, LogLevel, SessionId, Theme, WorkspaceId};
 use terminalos_terminal::{
     ShellManager, ShellSession, TerminalTab, deserialize_layout, key_event_to_bytes,
     serialize_layout,
@@ -45,9 +45,9 @@ pub struct TerminalAppOptions {
     pub config: AppConfig,
 }
 
-/// Stable session id so chat history survives restarts.
-fn default_chat_session() -> SessionId {
-    SessionId::from_uuid(Uuid::from_u128(0x0000_0000_0000_4000_8000_0000_0000_0001))
+/// Derives a stable chat session id per workspace.
+fn chat_session_for_workspace(workspace_id: WorkspaceId) -> SessionId {
+    SessionId::from_uuid(Uuid::new_v5(&workspace_id.as_uuid(), b"terminalos:chat"))
 }
 
 /// Main TerminalOS TUI application.
@@ -210,6 +210,11 @@ impl TerminalApp {
             info!("Active profile: {profile}");
         }
 
+        let workspace_id = workspace_manager
+            .active_id()
+            .unwrap_or_else(|| terminalos_workspace::id_from_path(&workspace_root));
+        let chat_session_id = chat_session_for_workspace(workspace_id);
+
         Ok(Self {
             show_sidebar,
             show_chat,
@@ -225,7 +230,7 @@ impl TerminalApp {
             branch,
             chat,
             chat_input: String::new(),
-            chat_session_id: default_chat_session(),
+            chat_session_id,
             memory_path,
             logs,
             focus,
@@ -265,6 +270,7 @@ impl TerminalApp {
             .map_err(|e| terminalos_shared::Error::Ui(format!("terminal: {e}")))?;
 
         info!("TerminalOS UI started");
+        self.ensure_chat_session();
         self.load_chat_history();
 
         while !self.should_quit {
@@ -802,8 +808,36 @@ impl TerminalApp {
                 .into_iter()
                 .filter_map(|r| role_from_str(&r.role).map(|role| (role, r.content)))
                 .collect();
+            let count = history.len();
             self.chat.load_history(history);
+            if count > 0 {
+                self.push_log(
+                    LogLevel::Info,
+                    format!("Loaded {count} chat messages for workspace"),
+                );
+            }
         }
+    }
+
+    fn ensure_chat_session(&self) {
+        let Some(workspace_id) = self.workspace_manager.active_id() else {
+            return;
+        };
+        let path = self.memory_path.clone();
+        let session_id = self.chat_session_id;
+        let cwd = self.workspace_root.display().to_string();
+        let _ = self.runtime.block_on(async move {
+            let store = MemoryStore::open(&path).await?;
+            store
+                .save_session(&SessionRecord {
+                    id: session_id,
+                    workspace_id,
+                    cwd,
+                    created_at: chrono::Utc::now(),
+                })
+                .await?;
+            Ok::<(), terminalos_shared::Error>(())
+        });
     }
 
     fn save_workspace_session(&self) {
